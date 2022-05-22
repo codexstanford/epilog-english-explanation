@@ -1,0 +1,544 @@
+
+<html>
+
+    <!--=======================================================================-->
+    
+    <head>
+      <title>Insurance Explanation</title>
+      <script language='javascript' src='./src/epilog.js'></script>
+      <script language='javascript' src='./src/worksheets.js'></script>
+      <script language='javascript' src='./src/localstorage.js'></script>
+      <script language='javascript' src='./src/explain.js'></script>
+      <script language='javascript' src='./src/english.js'></script>
+      <script language='javascript' src='./src/epilog_db_processing.js'></script>
+      <script language='javascript' src='./src/english_explain_improved.js'></script>
+      <script language='javascript'>
+    
+    function doinit ()
+     {var conclusion = parameters['conclusion'];
+      var widget = document.getElementById('explanation');
+
+      loadMetadata();
+
+      widget.innerHTML = englishify_improved(conclusion, lambda, library, berlitz);
+      return true}
+    
+    function justify (widget)
+     {var claim = widget.getAttribute('claim');
+      var conclusion = seq('claim.recommendation',claim,'decline')
+      var explanation = english(explain(conclusion,lambda,library),berlitz);
+      alert(explanation);
+      return true}
+    
+    var berlitz = [
+    read('english(claim.policy(C,P),"the policy of $C$ is $P$")'),
+    read('english(policy.startdate(P,S),"$P$ began on $S$")'),
+    read('english(policy.enddate(P,E),"$P$ ended on $E$")'),
+    read('english(claim.recommendation(C,decline),"$C$ was declined")'),
+    read('english(claim.recommendation(C,pay),"$C$ was paid")'),
+    read('english(plan_in_effect(C),"a plan was in effect during the period of $C$")'),
+    read('english(claim.exclusion(C,preexist),"the affliction in $C$ is a pre-existing condition")'),
+    read('english(partial_day(C),"the hospital stay of $C$ was too short")'),
+    read('english(~partial_day(C),"the hospital stay of $C$ was long enough")'),
+    read('english(claim.hospitalization(C,Z),"the hospitalization of $C$ is $Z$")'),
+    read('english(duration(Z,T),"the duration of $Z$ was $T$ milliseconds")'),
+    read('english(less(X,Y),"$X$ is less than $Y$")'),
+    read('english(exclusion(C,4.3i),"the claim violates exclusion 4.3i")'),
+    read('english(exclusion(C,4.3m),"the claim violates exclusion 4.3m")'),
+    read('english(evaluate(countofall(E,exclusion(C,E)),0),"there were no exclusions")'),
+    read('english(datetimetotimestamp(D,T,S),"the timestamp for date $D$ and time $T$ is $S$")'),
+    read('english(hospitalization.startdate(Z,S),"$Z$ began on $S$")'),
+    read('english(hospitalization.starttime(Z,T),"$Z$ began at $T$")'),
+    read('english(hospitalization.enddate(Z,S),"$Z$ ended on $S$")'),
+    read('english(hospitalization.endtime(Z,T),"$Z$ ended at $T$")'),
+    read('english(hospitalization.cause(Z,C),"$Z$ was caused by $C$")'),
+    read('english(accident.activity(C,A),"the activity in $C$ was $A$")'),
+    read('english(overlap(XS,XE,YS,YE),"[$XS$, $XE$] overlaps with [$YS$, $YE$]")'),
+    read('english(distinct(X,Y),"$X$ is not equal to $Y$")'),
+    read('english(evaluate(parsedate(DATE),[Y,M,D]),"$DATE$ parses as [$Y$,$M$,$D$]")'),
+    read('english(evaluate(parsetime(TIME),[H,M,S]),"$TIME$ parses as [$H$,$M$,$S$]")'),
+    read('english(evaluate(maketimestamp(Y,M,D,H,N,S),TS),"the timestamp for [$Y$,$M$,$D$,$H$,$N$,$S$] is $TS$")'),
+    read('english(evaluate(min(X,Y),Z),"the minimum of $X$ and $Y$ is $Z$")'),
+    read('english(evaluate(stringmin(X,Y),Z),"the minimum of $X$ and $Y$ is $Z$")'),
+    read('english(evaluate(minus(X,Y),Z),"$X$ minus $Y$ is $Z$")'),
+    read('english(countofall(E,exclusion(C,E),0),"there is no exclusion for $C$")')]
+    
+    
+    /*
+    function englishifyrule (p,facts)
+     {console.log("Englishifyrule:", p);
+       if (symbolp(p) || p[0]!=='rule')
+         {return "It is given that " + english(p,facts)};
+      if (p.length===1) {return 'false'};
+      if (p.length===2) {return english(p[1],facts)};
+      if (p.length===3)
+         {return english(p[1],facts) + ' because ' + englishlink(p[2],facts)};
+      result = english(p[1],facts) + ' because\n';
+      result = result + '  ' + englishlink(p[2],facts);
+      for (var i=3; i<p.length; i++)
+          {result = result + ' and\n  ' + englishlink(p[i],facts)};
+      return result}
+    
+    function englishlink (p,facts)
+     {//Will definitely not contain a rule, only an explanation of one
+       var result = english(p,facts);
+      return"<a href='justify.html?room=codex&conclusion=" + grind(p) + "'>" + result + "</a>"}
+      */
+    
+      </script>
+    </head>
+    
+    <!--=======================================================================-->
+    
+    <body align='center' bgcolor='#f8f8f8' onLoad='initialize(); doinit()'>
+      <center>
+        <table width='720' cellspacing='0' cellpadding='0'>
+          <tr>
+            <td>
+    
+    <center>
+      <table width='640' cellpadding='0' cellspacing='0' border='0'>
+        <tr>
+          <td width='640' height='90' align='center'>
+            <a href='./index.html' style='font-size:48px;color:#000088;text-decoration:none'>Insurance</a>
+          </td>
+        </tr>
+      </table>
+    </center>
+    
+    <!--=======================================================================-->
+    
+      <center>
+        <hr width='800' style='height:10;color:#446688;background-color:#446688'/>
+        <br/>
+      </center>
+    
+    <center>
+      <table style='font-size:18px'>
+        <tr><td><pre id='explanation'></pre></td></tr>
+      </table>
+    </center>
+    
+      <center>
+        <br/>
+        <hr width='800' style='height:10;color:#446688;background-color:#446688'/>
+      </center>
+    
+    <!--=======================================================================-->
+    
+    <textarea id='library' type='text/hrf' style='display:none'>
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%% Semantic Rules
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%% recommendations
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    claim.recommendation(C,pay) :-
+      plan_in_effect(C) &
+      ~partial_day(C) &
+      evaluate(countofall(E,exclusion(C,E)),0)
+    
+    claim.recommendation(C,decline) :- partial_day(C)
+    claim.recommendation(C,decline) :- exclusion(C,E)
+    
+    plan_in_effect(C) :-
+      claim.policy(C,P) &
+      claim.hospitalization(C,Z) &
+      policy.startdate(P,PS) &
+      policy.enddate(P,PE) &
+      hospitalization.startdate(Z,ZS) &
+      hospitalization.enddate(Z,ZE) &
+      overlap(PS,PE,ZS,ZE)
+    
+    partial_day(C) :-
+      claim.hospitalization(C,Z) &
+      duration(Z,DURATION) &
+      less(DURATION,86400000)
+    
+    duration(Z,DURATION) :-
+      hospitalization.startdate(Z,SD) &
+      hospitalization.starttime(Z,ST) &
+      hospitalization.enddate(Z,ED) &
+      hospitalization.endtime(Z,ET) &
+      datetimetotimestamp(SD,ST,SS) &
+      datetimetotimestamp(ED,ET,ES) &
+      evaluate(minus(ES,SS),DURATION)
+    
+    exclusion(C,4.3m) :- claim.exclusion(C,preexist)
+    
+    exclusion(C,4.3i) :-
+      claim.hospitalization(C,Z) &
+      hospitalization.cause(Z,X) &
+      accident.activity(X,skydiving)
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%% insurance-related definitions
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    person.policy(X,Y) :- policy.insuree(Y,X)
+    person.policy(X,Y) :- policy.dependent(Y,X)
+    
+    person.claim(X,Y) :-
+      hospitalization.patient(H,X) &
+      claim.hospitalization(Y,H)
+    
+    policy.claim(X,Y) :- claim.policy(Y,X)
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%% general definitions and predefined relations
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    overlap(PS,PE,ZS,ZE) :-
+      evaluate(stringmin(ZS,PE),ZS) &
+      evaluate(stringmin(PS,ZE),PS)
+    
+    datetimetotimestamp(DATE,TIME,STAMP) :-
+      evaluate(parsedate(DATE),[Y,M,D]) &
+      evaluate(parsetime(TIME),[H,N,S]) &
+      evaluate(maketimestamp(Y,M,D,H,N,S),STAMP)
+    
+    parsedate(DATE) :=
+      map(readstring,tail(matches(stringify(DATE),"(....)_(..)_(..)")))
+    
+    parsetime(TIME) :=
+      map(readstring,tail(matches(stringify(TIME),"(..)_(..)_(..)")))
+    
+    leq(X,Y) :- evaluate(min(X,Y),X)
+    less(X,Y) :- evaluate(min(X,Y),X) & distinct(X,Y)
+    
+    head(X!L) := X
+    tail(X!L) := L
+    
+    %%% number relations, e.g. less, greater
+    %%% string relations, e.g. stringappend
+    %%% date relations, e.g. dateplus
+    %%% and so forth...
+    
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    </textarea>
+    
+    <!--=======================================================================-->
+    
+    <textarea id='lambda' style='display:none'>
+    </textarea>
+    
+    <textarea id='db_metadata' style='display:none'>
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%% General Classes
+      %%% Version 2 - version 1 with P-L's revisions & changes to handle Chubb cases
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%% person
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+      type(person,class)
+      attribute(person,person.firstname)
+      attribute(person,person.lastname)
+      attribute(person,person.gender)
+      attribute(person,person.dob)
+      attribute(person,person.parent)
+      attribute(person,person.nationality)
+      attribute(person,person.countryofresidence)
+      attribute(person,person.occupation)
+      attribute(person,person.phone)
+      attribute(person,person.mobile)
+      attribute(person,person.email)
+
+      type(person.name,attributerelation)
+      domain(person.name,person)
+      range(person.name,string)
+      unique(person.name,no)
+      total(person.name,yes)
+
+      type(person.gender,attributerelation)
+      domain(person.gender,person)
+      range(person.gender,gender)
+      unique(person.gender,yes)
+      total(person.gender,yes)
+
+      type(person.dob,attributerelation)
+      domain(person.dob,person)
+      range(person.dob,date)
+      unique(person.dob,yes)
+      total(person.dob,yes)
+
+      type(person.parent,attributerelation)
+      domain(person.parent,person)
+      range(person.parent,person)
+      unique(person.parent,no)
+      total(person.parent,yes)
+
+      type(person.nationality,attributerelation)
+      domain(person.nationality,person)
+      range(person.nationality,country)
+      unique(person.nationality,no)
+      total(person.nationality,yes)
+
+      type(person.countryofresidence,attributerelation)
+      domain(person.countryofresidence,person)
+      range(person.countryofresidence,country)
+      unique(person.countryofresidence,yes)
+      total(person.countryofresidence,yes)
+
+      type(person.occupation,attributerelation)
+      domain(person.occupation,person)
+      range(person.occupation,profession)
+      unique(person.occupation,yes)
+      total(person.occupation,yes)
+
+      type(person.phone,attributerelation)
+      domain(person.phone,person)
+      range(person.phone,string)
+      unique(person.phone,no)
+      total(person.phone,no)
+
+      type(person.mobile,attributerelation)
+      domain(person.mobile,person)
+      range(person.mobile,string)
+      unique(person.mobile,no)
+      total(person.mobile,no)
+
+      type(person.email,attributerelation)
+      domain(person.email,person)
+      range(person.email,string)
+      unique(person.email,no)
+      total(person.email,no)
+
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%% hospital
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+      type(hospital,class)
+      attribute(hospital,hospital.name)
+      attribute(hospital,hospital.country)
+
+      type(hospital.name,attributerelation)
+      domain(hospital.name,hospital)
+      range(hospital.name,string)
+      unique(hospital.name,yes)
+      total(hospital.name,yes)
+
+      type(hospital.country,attributerelation)
+      domain(hospital.country,hospital)
+      range(hospital.country,country)
+      unique(hospital.country,yes)
+      total(hospital.country,yes)
+
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%% country
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+      type(country,class)
+      attribute(country,country.name)
+      attribute(country,country.continent)
+
+      type(country.name,attributerelation)
+      domain(country.name,country)
+      range(country.name,string)
+      total(country.continent,yes)
+      unique(country.continent,yes)
+
+      type(country.continent,attributerelation)
+      domain(country.continent,country)
+      range(country.continent,continent)
+      total(country.continent,yes)
+      unique(country.continent,yes)
+
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%% Classes without attributes
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+      type(boolean,class)
+      type(continent,class)
+      type(date,class)
+      type(gender,class)
+      type(number,class)
+      type(profession,class)
+      type(string,class)
+      type(time,class)
+
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%% Insurance Classes
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%% policy
+      %%% endorsements forthcoming
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+      type(policy,class)
+      attribute(policy,policy.insuree)
+      attribute(policy,policy.dependent)
+      attribute(policy,policy.startdate)
+      attribute(policy,policy.enddate)
+
+      type(policy.insuree,attributerelation)
+      domain(policy.insuree,policy)
+      range(policy.insuree,person)
+      unique(policy.insuree,yes)
+      total(policy.insuree,yes)
+
+      type(policy.dependent,attributerelation)
+      domain(policy.dependent,policy)
+      range(policy.dependent,person)
+      unique(policy.dependent,no)
+      total(policy.dependent,no)
+
+      type(policy.startdate,attributerelation)
+      domain(policy.startdate,policy)
+      range(policy.startdate,date)
+      unique(policy.startdate,yes)
+      total(policy.startdate,yes)
+
+      type(policy.enddate,attributerelation)
+      domain(policy.enddate,policy)
+      range(policy.enddate,date)
+      unique(policy.enddate,yes)
+      total(policy.enddate,yes)
+
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%% claim
+      %%% claimlines forthcoming
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+      type(claim,class)
+      attribute(claim,claim.date)
+      attribute(claim,claim.policy)
+      attribute(claim,claim.hospitalization)
+      attribute(claim,claim.priorhospitalization)
+      attribute(claim,claim.disposition)
+      attribute(claim,claim.amount)
+      attribute(claim,claim.justification)
+
+      type(claim.date,attributerelation)
+      domain(claim.date,claim)
+      range(claim.date,date)
+      unique(claim.date,yes)
+      total(claim.date,no)
+
+      type(claim.policy,attributerelation)
+      domain(claim.policy,claim)
+      range(claim.policy,policy)
+      unique(claim.policy,yes)
+      total(claim.policy,yes)
+
+      type(claim.hospitalization,attributerelation)
+      domain(claim.hospitalization,claim)
+      range(claim.hospitalization,hospitalization)
+      unique(claim.hospitalization,no)
+      total(claim.hospitalization,yes)
+
+      type(claim.priorhospitalization,attributerelation)
+      domain(claim.priorhospitalization,claim)
+      range(claim.priorhospitalization,hospitalization)
+      unique(claim.priorhospitalization,no)
+      total(claim.priorhospitalization,no)
+
+      type(claim.disposition,attributerelation)
+      domain(claim.disposition,claim)
+      range(claim.disposition,disposition)
+      unique(claim.disposition,yes)
+      total(claim.disposition,yes)
+
+      type(claim.amount,attributerelation)
+      domain(claim.amount,claim)
+      range(claim.amount,number)
+      unique(claim.amount,yes)
+      total(claim.amount,yes)
+
+      type(claim.justification,attributerelation)
+      domain(claim.justification,claim)
+      range(claim.justification,string)
+      unique(claim.justification,yes)
+      total(claim.justification,yes)
+
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%% hospitalization
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+      type(hospitalization,class)
+      attribute(hospitalization,hospitalization.patient)
+      attribute(hospitalization,hospitalization.hospital)
+      attribute(hospitalization,hospitalization.diagnosis)
+      attribute(hospitalization,hospitalization.cause)
+      attribute(hospitalization,hospitalization.startdate)
+      attribute(hospitalization,hospitalization.starttime)
+      attribute(hospitalization,hospitalization.enddate)
+      attribute(hospitalization,hospitalization.endtime)
+
+      type(hospitalization.patient,attributerelation)
+      domain(hospitalization.patient,hospitalization)
+      range(hospitalization.patient,person)
+      unique(hospitalization.patient,yes)
+      total(hospitalization.patient,yes)
+
+      type(hospitalization.diagnosis,attributerelation)
+      domain(hospitalization.diagnosis,hospitalization)
+      range(hospitalization.diagnosis,diagnosis)
+      unique(hospitalization.diagnosis,no)
+      total(hospitalization.diagnosis,yes)
+
+      type(hospitalization.cause,attributerelation)
+      domain(hospitalization.cause,hospitalization)
+      range(hospitalization.cause,event)
+      unique(hospitalization.cause,no)
+      total(hospitalization.cause,no)
+
+      type(hospitalization.patient,attributerelation)
+      domain(hospitalization.patient,hospitalization)
+      range(hospitalization.patient,hospital)
+      unique(hospitalization.patient,yes)
+      total(hospitalization.patient,yes)
+
+      type(hospitalization.startdate,attributerelation)
+      domain(hospitalization.startdate,policy)
+      range(hospitalization.startdate,date)
+      unique(hospitalization.startdate,yes)
+      total(hospitalization.startdate,yes)
+
+      type(hospitalization.starttime,attributerelation)
+      domain(hospitalization.starttime,policy)
+      range(hospitalization.starttime,time)
+      unique(hospitalization.starttime,yes)
+      total(hospitalization.starttime,yes)
+
+      type(hospitalization.enddate,attributerelation)
+      domain(hospitalization.enddate,policy)
+      range(hospitalization.enddate,date)
+      unique(hospitalization.enddate,yes)
+      total(hospitalization.enddate,yes)
+
+      type(hospitalization.endtime,attributerelation)
+      domain(hospitalization.endtime,policy)
+      range(hospitalization.endtime,date)
+      unique(hospitalization.endtime,yes)
+      total(hospitalization.endtime,yes)
+
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%% Classes with only name attributes
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+      type(disposition,class)
+      type(diagnosis,class)
+      type(event,class)
+
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+      %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    </textarea>
+
+    <!--=======================================================================-->
+    
+            </td>
+          </tr>
+        </table>
+      </center>
+    </body>
+    
+    <!--=======================================================================-->
+    
+    </html>
+    

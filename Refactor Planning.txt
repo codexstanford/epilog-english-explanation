@@ -1,0 +1,40 @@
+*************************** Action items ***************************
+
+- Ensure epilog derivations are only interacted with via DerivTrees, not their list versions
+    - Clean up the DerivTree interface and make it more intuitive
+    - See how the derivations are being interacted with to decide on the interface
+- Decompose the epilog datatabase checks, with one function for each check.
+    - Perform the metadata/type predicate check in the check functions, to determine how to perform the check.
+        - Had the option of instead making two functions for each check, one each for when we do/don't have metadata available. Decided against this to avoid polluting the namespace with modal function names for each check. (e.g. isUnique vs. isUnique_withMetadata)
+            - Even if we did have modal function names, since we wouldn't want the program to crash if the user incorrectly called a given check function, I would want to defensively add guard clauses to each of the functions anyway
+        - This results in performing the metadata check for each call to these relation-evaluation functions (which is redundant computationally and code-wise), but...
+            i. these checks are cheap
+            ii. it results in a cleaner interface, since there is only one possible function for each check, so the user doesn't need to know whether there is or isn't metadata to determine which function to call.
+                a. Could, in principle, have public functions that call the correct private functions based on whether metadata is present, but I'd prefer not to make this a static class for now, and can easily refactor this version into that if desired.
+            iii. not all properties of relations we care about will necessarily be included in metadata, so won't have to worry about some checks having with/without metadata versions, and others only having one version.
+- Make an isMetadataPresent function that is used by the database checks
+- Make the simple HTML page.
+    - It allows the user to input a derivable fact into a textbox and receive an english explanation
+    - The derivable fact will be passed into a URL param like in the current implementation, allowing bookmarking
+        - Make sure the URL param is also in the textbox on loading
+    - Load metadata into the localstorage on page load, if not already done.
+        - By default, it will be loaded from a hidden div on the page.
+        - Will be in localstorage to make sure it isn't a single global variable, and so it will be preserved between page visits.
+        * Later:
+            - Have buttons that let the user pick text files from their computer to read as the facts, rules, metadata, and templates
+                - Have a refresh button to allow reloading metadata from the hidden div.
+- Compare my versions of {explain, epilog, localstorage}.js to see if I've made any changes that aren't logging or commenting
+    - If the changes aren't functional, make a note that these files are functionally identical to the baselines, but partially commented for clarity.
+- Move berlitz into a file/hidden div that can be loaded, so templates can more easily be added/modified by the developer.
+
+*************************** Planning TODOs ***************************
+
+- Decide what I should rename my js library files to
+- Decide what to rename englishify_improved to
+- Decide whether to break DerivTree out into another file
+
+
+
+*************************** Tests ***************************
+
+- Check what happens when a fact not-derivable from the facts and rules is supplied
