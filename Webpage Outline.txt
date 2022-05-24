@@ -1,0 +1,10 @@
+**** TODOs ****
+- Button between the explanation and input that generates english explanation
+- Checkboxes for different options next to the button, possibly hide
+- Buttons for loading facts/rules/metadata/templates from a local file
+- Button to reload the default data
+
+**** Done****
+- Div below title that houses the explanation
+- Text box centered below the explanation for input
+- On page load, check localstorage for facts, rules, metadata, and templates. For each, load if none.

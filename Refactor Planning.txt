@@ -26,12 +26,22 @@
 - Compare my versions of {explain, epilog, localstorage}.js to see if I've made any changes that aren't logging or commenting
     - If the changes aren't functional, make a note that these files are functionally identical to the baselines, but partially commented for clarity.
 - Move berlitz into a file/hidden div that can be loaded, so templates can more easily be added/modified by the developer.
+- Ask what MRG would like me to do about the fact that explain can be called on ground atoms that are not derivable from the facts and rules
+
 
 *************************** Planning TODOs ***************************
 
 - Decide what I should rename my js library files to
 - Decide what to rename englishify_improved to
 - Decide whether to break DerivTree out into another file
+
+
+*************************** Bugs ***************************
+
+- explain.js doesn't check whether a rule to be explained can be derived from the given facts and rules
+- Doesn't correctly replace symbols in explanations of "it is given that"
+
+
 
 
 

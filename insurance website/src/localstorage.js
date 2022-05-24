@@ -16,7 +16,7 @@ var reception = false;
 function initialize ()
  {
    //console.log("initialize - (localstorage)");
-   //From worksheet.js
+   //getparameters is From worksheet.js
    parameters = getparameters();
 
   var widget = document.getElementById('library');  
@@ -152,7 +152,8 @@ function getdata (room)
  {return readdata(localStorage[room])}
 
 function putdata (room,data)
- {localStorage[room] = grindem(data);
+ {
+   localStorage[room] = grindem(data);
   localStorage['time'] = timestamp();
   return localStorage['time']}
 

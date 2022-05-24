@@ -1,5 +1,10 @@
 var db_metadata = [];
 
+function isDerivableFact(groundAtom, facts, rules) {
+    //Must use compfindp, not basefindp. basefindp doesn't handle functions like evaluate
+    return compfindp(groundAtom, facts, rules);
+}
+
 function loadMetadata() {
     let metadataWidget = document.getElementById('db_metadata');  
     db_metadata = [];

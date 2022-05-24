@@ -7,6 +7,9 @@
 // Can be applied recursively to get explanations for subgoals of that rule.
 //==============================================================================
 
+
+//Note from Preston Carlson: This does not check whether p is derivable from facts and rules. 
+  //In that case, will simply return p, which is not desirable because p is returned as an explanation for some true facts. (e.g. "not" facts)
 function explain (p,facts,rules)
  {//console.log("Explain: ", p);
   if (symbolp(p)) {return explainatom(p,facts,rules)}

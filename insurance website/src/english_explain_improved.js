@@ -70,6 +70,14 @@ function englishify_improved (conclusion,facts,rules,templates)
     const ignoreClassAttributes = true;
     const assumeNonGlobal = true;
 
+    let isFact = isDerivableFact(conclusion, facts, rules)
+    console.log(isFact);
+    if (!isFact) {
+        console.log(conclusion, "is NOT derivable from the given facts and rules.");
+    } else {
+        console.log(conclusion, "IS derivable from the given facts and rules.");
+    }
+
     let derivTree = new DerivationTree(conclusion, facts, rules, templates);
 
     console.log(derivTree.derivList);
@@ -86,6 +94,7 @@ function englishify_improved (conclusion,facts,rules,templates)
 
 function englishify_explanationList(explanationList, derivTree, facts, rules, typePredicate, ignoreClassAttributes = true) {
     if (explanationList.length === 0) {
+        console.log("[englishify_explanationList] Warning: explanation not in list form:",explanationList);
         return false;
     }
     
@@ -116,6 +125,7 @@ function englishify_explanationList(explanationList, derivTree, facts, rules, ty
 
     }
 
+    console.log(englishExplanation);
     return englishExplanation;
 
 }

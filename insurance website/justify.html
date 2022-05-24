@@ -23,13 +23,6 @@
       widget.innerHTML = englishify_improved(conclusion, lambda, library, berlitz);
       return true}
     
-    function justify (widget)
-     {var claim = widget.getAttribute('claim');
-      var conclusion = seq('claim.recommendation',claim,'decline')
-      var explanation = english(explain(conclusion,lambda,library),berlitz);
-      alert(explanation);
-      return true}
-    
     var berlitz = [
     read('english(claim.policy(C,P),"the policy of $C$ is $P$")'),
     read('english(policy.startdate(P,S),"$P$ began on $S$")'),
@@ -62,28 +55,6 @@
     read('english(evaluate(stringmin(X,Y),Z),"the minimum of $X$ and $Y$ is $Z$")'),
     read('english(evaluate(minus(X,Y),Z),"$X$ minus $Y$ is $Z$")'),
     read('english(countofall(E,exclusion(C,E),0),"there is no exclusion for $C$")')]
-    
-    
-    /*
-    function englishifyrule (p,facts)
-     {console.log("Englishifyrule:", p);
-       if (symbolp(p) || p[0]!=='rule')
-         {return "It is given that " + english(p,facts)};
-      if (p.length===1) {return 'false'};
-      if (p.length===2) {return english(p[1],facts)};
-      if (p.length===3)
-         {return english(p[1],facts) + ' because ' + englishlink(p[2],facts)};
-      result = english(p[1],facts) + ' because\n';
-      result = result + '  ' + englishlink(p[2],facts);
-      for (var i=3; i<p.length; i++)
-          {result = result + ' and\n  ' + englishlink(p[i],facts)};
-      return result}
-    
-    function englishlink (p,facts)
-     {//Will definitely not contain a rule, only an explanation of one
-       var result = english(p,facts);
-      return"<a href='justify.html?room=codex&conclusion=" + grind(p) + "'>" + result + "</a>"}
-      */
     
       </script>
     </head>
