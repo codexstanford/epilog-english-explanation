@@ -1,48 +1,55 @@
-
+<!-- adapted from MRG's insurance demo webpages and Epilog optimizer webpage -->
 <html>
-
     <!--=======================================================================-->
     
     <head>
+        <link rel="stylesheet" href="index.css">
         <!--
         <title>Insurance Explanation</title>
         <script language='javascript' src='./src/worksheets.js'></script>
         <script language='javascript' src='./src/explain.js'></script>
         <script language='javascript' src='./src/english.js'></script>
         <script language='javascript' src='./src/epilog_db_processing.js'></script>
-        <script language='javascript' src='./src/english_explain_improved.js'></script>
+        <script language='javascript' src='./src/english_explanation.js'></script>
+        <script language='javascript' src='./src/util.js'></script>
         -->
         <script language='javascript' src='./src/epilog.js'></script>
         <script language='javascript' src='./src/localstorage.js'></script>
         <script language='javascript'>
+
             function doinit () {
-                // Only loads if this is the user's first visit to the page.
-                // Don't overwrite existing data unless the user requests it.
+                let widget = document.getElementById('explanation');
+
+                // Don't load data unless this is the user's first visit to the page.
                 loadEpilogAndTemplates(false);
-                
-                
-                let explanationWidget = document.getElementById('explanation');
+
+                let {facts, rules, metadata, english_templates} = getEpilogAndTemplates();
+
+                //console.log(facts);
+                //console.log(rules);
+                //console.log(metadata);
+
                 const urlParameters = new URLSearchParams(window.location.search);
 
+                // No conclusion to explain
                 if (!urlParameters.has('conclusion')) {
-                    explanationWidget.innerHTML = "Explanation will be displayed here.";
+                    widget.innerHTML = "Explanation will be displayed here.";
                     return;
                 }
 
                 const conclusion = urlParameters.get('conclusion');
 
-                //TODO: englishify the conclusion
-                explanationWidget.innerHTML = conclusion;
+                //TODO: englishify the conclusion englishify_improved(conclusion, lambda, library, berlitz);
+                widget.innerHTML = conclusion;
 
-                //widget.innerHTML = englishify_improved(conclusion, lambda, library, berlitz);
                 return true;
-            }    
+
+            }
       </script>
-      <link rel="stylesheet" href="index.css">
+      
     </head>
     
     <!--=======================================================================-->
-    <!-- adapted from webpages of MRG's insurance demo and Epilog optimizer -->
 
     <body onLoad='doinit()'>
         <div id='page_container'>
@@ -66,6 +73,10 @@
     <br/>
     <hr class='horizontal_divider'/>
     
+    <div id = "button_container">
+        <input type='button' value="Generate Explanation" onClick='console.log("englishify")'/>
+    </div>
+
     <textarea id='input_conclusion' rows='8' cols='50' wrap='soft' placeholder='Paste the Epilog ground atom you would like explained here.'></textarea>
     
     <!--=======================================================================-->
@@ -1753,7 +1764,7 @@
 
     <!--=======================================================================-->
 
-    <!-- TODO: Expected format of english templates is specified in ____.js -->
+    <!-- Expected format of english templates is specified in localstorage.js above the getTemplates() function -->
     <textarea id='english_templates' style='display:none'>
         (claim.policy(C,P),"the policy of $C$ is $P$")
         (policy.startdate(P,S),"$P$ began on $S$")

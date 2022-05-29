@@ -56,9 +56,9 @@ function englishatom (p,facts)
   for (var i=0; i<facts.length; i++)
       {var al = simplematcher(facts[i][1],p);
        if (al) {
-        //console.log("facts:", facts[i]);
-        //console.log("p:", p);
-        //console.log("al:",al);
+        console.log("facts:", facts[i][1]);
+        console.log("p:", p);
+        console.log("al:",al);
          return plugstring(stripquotes(facts[i][2]),al)}};
   return grind(p)}
 

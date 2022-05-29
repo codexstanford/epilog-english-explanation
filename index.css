@@ -17,9 +17,11 @@ body {
     height: 60;
     
     font-size:48px;
-    text-align: center;
+    font-family: Arial, Helvetica, sans-serif;
     color:#000088;
     text-decoration:none;
+    
+    text-align: center;
 
     margin-left: auto;
     margin-right: auto;
@@ -28,9 +30,11 @@ body {
 
 .horizontal_divider {
     width: 800; 
-    height:10;
-    color:#446688;
-    background-color:#446688;
+    border-top: 8px solid lightblue;
+    border-bottom: 8px solid lightblue;
+
+    
+    border-radius: 5px;
 }
 
 #explanation {
@@ -40,11 +44,18 @@ body {
     text-align: center;
 }
 
+#button_container {
+    display: flex;
+
+    justify-content: center;
+}
+
 #input_conclusion {
     font-family:courier;
     font-size:16px;
 
     display:block;
+    margin-top: 10px;
     margin-left: auto;
     margin-right: auto;
 }

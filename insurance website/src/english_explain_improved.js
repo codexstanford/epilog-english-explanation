@@ -115,7 +115,6 @@ function englishify_explanationList(explanationList, derivTree, facts, rules, ty
             continue;
         }
 
-        //TODO: Test splitting into two for loops with an additional condition on this one
         if (!childExplanationAdded) {
             englishExplanation += " because \n" + englishlink(derivTree.children[i].derivList, explanationList[i+1]);
             childExplanationAdded = true;
