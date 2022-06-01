@@ -18,6 +18,11 @@
 // getEpilogMetadata
 // getEnglishTemplates
 //
+// setFactsFile
+// setRulesFile
+// setMetadataFile
+// setTemplatesFile
+//
 // isEpilogFactsLoaded
 // isEpilogRulesLoaded
 // isEpilogMetadataLoaded
@@ -34,13 +39,18 @@
 // localStorage data loading
 //==============================================================================
 //------------------------------------------------------------------------------
-// loadEpilogAndTemplates
+// loadEpilogAndTemplates (async)
 // getEpilogAndTemplates
 //
-// loadEpilogFacts
-// loadEpilogRules
-// loadEpilogMetadata
-// loadEnglishTemplates
+// setFactsFile
+// setRulesFile
+// setMetadataFile
+// setTemplatesFile
+//
+// loadEpilogFacts (async)
+// loadEpilogRules (async)
+// loadEpilogMetadata (async)
+// loadEnglishTemplates (async)
 //
 // isEpilogFactsLoaded
 // isEpilogRulesLoaded
@@ -54,10 +64,12 @@
 // getEnglishTemplates
 //------------------------------------------------------------------------------
 
-const epilogFactsKey = "facts";
-const epilogRulesKey = "rules";
-const epilogMetadataKey = "metadata";
-const englishTemplatesKey = "english_templates";
+const EPILOG_FACTS_KEY = "facts";
+const EPILOG_RULES_KEY = "rules";
+const EPILOG_METADATA_KEY = "metadata";
+const ENGLISH_TEMPLATES_KEY = "english_templates";
+
+const UPLOADED_FILENAME_KEY_SUFFIX = "_uploaded_filename";
 
 // These specify from which files to load facts, rules, metadata, and templates.
 // When these are null, we load from hidden divs on the webpage.
@@ -67,35 +79,17 @@ var epilogRulesFile = null;
 var epilogMetadataFile = null;
 var englishTemplatesFile = null;
 
+// Note: To keep track of whether uploaded data is being used between page loads/refreshes, 
+// we set localStorage[SOME_KEY_CONST + "_selected_filename"] to the name of the uploaded file.
+// If using default data, the corresponding localStorage[SOME_KEY_CONST + "_selected_filename"] is set to "null".
+
 
 // Loads data into localStorage for global access and persistence between sessions.
-function loadEpilogAndTemplates(overwriteExisting) {
-
-    // Force loading data 
-    if (overwriteExisting) {
-        loadEpilogFacts();
-        loadEpilogRules();
-        loadEpilogMetadata();
-        loadEnglishTemplates();
-        return;
-    }
-
-    // Only load if data isn't present
-    if (!isEpilogFactsLoaded()) {
-        loadEpilogFacts();
-    }
-
-    if (!isEpilogRulesLoaded()) {
-        loadEpilogRules();
-    }
-
-    if (!isEpilogMetadataLoaded) {
-        loadEpilogMetadata();
-    }
-
-    if (!isEnglishTemplatesLoaded()) {
-        loadEnglishTemplates();
-    }
+async function loadEpilogAndTemplates(overwriteExisting) {
+    await loadEpilogFacts(overwriteExisting);
+    await loadEpilogRules(overwriteExisting)
+    await loadEpilogMetadata(overwriteExisting)
+    await loadEnglishTemplates(overwriteExisting);
 }
 
 // Reads string data from localStorage into a usable format:
@@ -110,68 +104,140 @@ function getEpilogAndTemplates() {
 }
 
 
-function loadEpilogFacts() {
+function setFactsFile(factsFile) {
+    epilogFactsFile = factsFile;
+}
+
+function setRulesFile(rulesFile) {
+    epilogRulesFile = rulesFile;
+}
+
+function setMetadataFile(metadataFile) {
+    epilogMetadataFile = metadataFile;
+}
+
+function setTemplatesFile(templatesFile) {
+    englishTemplatesFile = templatesFile;
+}
+
+async function loadEpilogFacts(overwriteExisting) {
+    if (!overwriteExisting && isEpilogFactsLoaded()) {
+        return;
+    }
+
+    let factsTextData = "";
+    let factsSelectedFileName = "";
+
+    // Default facts
     if (epilogFactsFile === null) {
-        let widget = document.getElementById(epilogFactsKey);
-        localStorage[epilogFactsKey] = widget.textContent;
+        factsTextData = document.getElementById(EPILOG_FACTS_KEY).textContent;
+        factsSelectedFileName = "null";
+    } else {
+        // Uploaded by user
+        factsTextData = await epilogFactsFile.text();
+        factsSelectedFileName = epilogFactsFile.name;
     }
+
+    localStorage[EPILOG_FACTS_KEY] = factsTextData;
+    localStorage[EPILOG_FACTS_KEY + UPLOADED_FILENAME_KEY_SUFFIX] = factsSelectedFileName;
 }
 
-function loadEpilogRules() {
+async function loadEpilogRules(overwriteExisting) {
+    if (!overwriteExisting && isEpilogRulesLoaded()) {
+        return;
+    }
+    
+    let rulesTextData = "";
+    let rulesSelectedFileName = "";
+
     if (epilogRulesFile === null) {
-        let widget = document.getElementById(epilogRulesKey);
-        localStorage[epilogRulesKey] = widget.textContent;
+        rulesTextData = document.getElementById(EPILOG_RULES_KEY).textContent;
+        rulesSelectedFileName = "null";
+    } else {
+        rulesTextData = await epilogRulesFile.text();
+        rulesSelectedFileName = epilogRulesFile.name;
     }
+
+    localStorage[EPILOG_RULES_KEY] = rulesTextData;
+    localStorage[EPILOG_RULES_KEY + UPLOADED_FILENAME_KEY_SUFFIX] = rulesSelectedFileName;
 }
 
-function loadEpilogMetadata() {
+async function loadEpilogMetadata(overwriteExisting) {
+    if (!overwriteExisting && isEpilogMetadataLoaded()) {
+        return;
+    }
+    
+    let metadataTextData = "";
+    let metadataSelectedFileName = "";
+
     if (epilogMetadataFile === null) {
-        let widget = document.getElementById(epilogMetadataKey);
-        localStorage[epilogMetadataKey] = widget.textContent;
+        metadataTextData = document.getElementById(EPILOG_METADATA_KEY).textContent;
+        metadataSelectedFileName = "null";
+    } else {
+        metadataTextData = await epilogMetadataFile.text();
+        metadataSelectedFileName = epilogMetadataFile.name;
     }
+
+    localStorage[EPILOG_METADATA_KEY] = metadataTextData;
+    localStorage[EPILOG_METADATA_KEY + UPLOADED_FILENAME_KEY_SUFFIX] = metadataSelectedFileName;
 }
 
-function loadEnglishTemplates() {
-    if (englishTemplatesFile === null) {
-        let widget = document.getElementById(englishTemplatesKey);
-        localStorage[englishTemplatesKey] = widget.textContent;
+async function loadEnglishTemplates(overwriteExisting) {
+    if (!overwriteExisting && isEnglishTemplatesLoaded()) {
+        return;
     }
+    
+    let englishTemplatesTextData = "";
+    let englishTemplatesSelectedFileName = "";
+
+    console.log("test");
+
+    if (englishTemplatesFile === null) {
+        englishTemplatesTextData = document.getElementById(ENGLISH_TEMPLATES_KEY).textContent;
+        englishTemplatesSelectedFileName = "null";
+    } else {
+        englishTemplatesTextData = await englishTemplatesFile.text();
+        englishTemplatesSelectedFileName = englishTemplatesFile.name;
+    }
+
+    localStorage[ENGLISH_TEMPLATES_KEY] = englishTemplatesTextData;
+    localStorage[ENGLISH_TEMPLATES_KEY + UPLOADED_FILENAME_KEY_SUFFIX] = englishTemplatesSelectedFileName;
 }
 
 function isEpilogFactsLoaded() {
-    return localStorage.getItem(epilogFactsKey) !== null;
+    return localStorage.getItem(EPILOG_FACTS_KEY) !== null;
 }
 
 function isEpilogRulesLoaded() {
-    return localStorage.getItem(epilogRulesKey) !== null;
+    return localStorage.getItem(EPILOG_RULES_KEY) !== null;
 }
 
 function isEpilogMetadataLoaded() {
-    return localStorage.getItem(epilogMetadataKey) !== null;
+    return localStorage.getItem(EPILOG_METADATA_KEY) !== null;
 }
 
 function isEnglishTemplatesLoaded() {
-    return localStorage.getItem(englishTemplatesKey) !== null;
+    return localStorage.getItem(ENGLISH_TEMPLATES_KEY) !== null;
 }
 
 //Parses the Epilog fact string from localStorage into an Epilog fact set 
 function getEpilogFacts() {
-    return definemorefacts([], readdata(localStorage[epilogFactsKey]));
+    return definemorefacts([], readdata(localStorage[EPILOG_FACTS_KEY]));
 }
 
 //Parses Epilog rules string from localStorage into an Epilog rule set
 function getEpilogRules() {
-    return definemorerules([], readdata(localStorage[epilogRulesKey]));
+    return definemorerules([], readdata(localStorage[EPILOG_RULES_KEY]));
 }
 
 //Parses Epilog metadata string from localStorage into an Epilog fact set
 function getEpilogMetadata() {
-    return definemorefacts([], readdata(localStorage[epilogMetadataKey]));
+    return definemorefacts([], readdata(localStorage[EPILOG_METADATA_KEY]));
 }
 
 class TemplateWrapper {
     /* Arguments:
-    *   queryGoal: an Epilog query goal as a string.
+    *   queryGoal: an Epilog query goal as a string or list.
     *   templateString: the unfilled template string for that query goal.
     *   varSequence: an array containing the variables in the template that appear in the query goal, 
     *                            ordered as they appear in the template.
@@ -180,16 +246,23 @@ class TemplateWrapper {
     */
    
     constructor(queryGoal, templateString, varSequence) {
+        if (typeof(queryGoal) === "string") {
+            queryGoal = read(queryGoal);
+        }
         this.queryGoal = queryGoal;
         this.templateString = templateString;
         this.varSequence = varSequence;
     }
+
+    queryAsList() {
+        return this.queryGoal;
+    }
 }
 
 /* Parses input string of english templates into an array.
- * If no argument provided, parses string data from localStorage[englishTemplatesKey].
+ * If no argument provided, parses string data from localStorage[ENGLISH_TEMPLATES_KEY].
  * 
- * Expected format of string data in localStorage[englishTemplatesKey]:
+ * Expected format of string data in localStorage[ENGLISH_TEMPLATES_KEY]:
  *      - A series of template pairs of the form (epilog_query_goal,"string containing an English template").
     *      - Each template pair should be on its own line.
     *      - The epilog_query_goal can contain variables, as in standard Epilog.
@@ -201,7 +274,7 @@ class TemplateWrapper {
  * Returns an array containing one TemplateWrapper for each template.
  * If invalid argument or templates haven't been loaded into localStorage, returns false.
  * 
- * e.g. if localStorage[englishTemplatesKey] is the two-line string "(claim.policy(C,P),"the policy of $C$ is $P$") \n (policy.startdate(P,S),"$P$ began on $S$")",
+ * e.g. if localStorage[ENGLISH_TEMPLATES_KEY] is the two-line string "(claim.policy(C,P),"the policy of $C$ is $P$") \n (policy.startdate(P,S),"$P$ began on $S$")",
         returns [new TemplateWrapper("claim.policy(C,P)", "the policy of $C$ is $P$", ["C", "P"]),
                  new TemplateWrapper("policy.startdate(P,S)", "$P$ began on $S$", ["P", "S"])]
 */
@@ -213,7 +286,7 @@ function getEnglishTemplates(englishTemplateStr = null) {
             return false;
         }
 
-        englishTemplateStr = localStorage[englishTemplatesKey];
+        englishTemplateStr = localStorage[ENGLISH_TEMPLATES_KEY];
     }
     else if (typeof(englishTemplateStr) !== "string") {
         console.log("[Warning] getEnglishTemplates: input must be a string.");
@@ -228,6 +301,7 @@ function getEnglishTemplates(englishTemplateStr = null) {
         //Convert to an epilog string to delegate parsing to epilog.js
         const [queryGoal, templateStr] = read("english" + pairStr.trim()).slice(1);
 
+       
         //Get the variables from the goal
         const varSet = vars(queryGoal);
         
@@ -252,6 +326,7 @@ function getEnglishTemplates(englishTemplateStr = null) {
 
     //Return false if no templates parsed from input
     if (templates.length === 0) {
+        console.log("[Warning] getEnglishTemplates: no templates parsed from string.");
         return false;
     }
 
