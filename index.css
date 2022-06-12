@@ -30,9 +30,7 @@ body {
 
 .horizontal_divider_explanation {
     width: 800; 
-    border-top: 8px solid lightblue;
-    border-bottom: 8px solid lightblue;
-
+    border: 8px solid lightblue;
     
     border-radius: 5px;
 }
