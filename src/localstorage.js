@@ -254,7 +254,7 @@ class TemplateWrapper {
         this.varSequence = varSequence;
     }
 
-    queryAsList() {
+    getQueryAsList() {
         return this.queryGoal;
     }
 }

@@ -57,6 +57,7 @@
             }
 
             function loadOptions(urlParameters) {
+                // TODO: use the options set by the user the last time they were on the page (stored in localstorage)
                 let options = defaultOptions;
 
                 if (urlParameters.has("replaceWithType")) {
@@ -240,7 +241,7 @@
     
     <div id='explanation'>
     </div>
-    
+
     
       
     <br/>
@@ -1957,6 +1958,12 @@
         unique(hospitalization.patient,yes)
         total(hospitalization.patient,yes)
 
+        type(hospitalization.hospital,attributerelation)
+        domain(hospitalization.hospital,hospitalization)
+        range(hospitalization.hospital,hospital)
+        unique(hospitalization.hospital,yes)
+        total(hospitalization.hospital,yes)
+
         type(hospitalization.diagnosis,attributerelation)
         domain(hospitalization.diagnosis,hospitalization)
         range(hospitalization.diagnosis,diagnosis)
@@ -2024,8 +2031,8 @@
         (claim.recommendation(C,pay),"$C$ was paid")
         (plan_in_effect(C),"a plan was in effect during the period of $C$")
         (claim.exclusion(C,preexist),"the affliction in $C$ is a pre-existing condition")
-        (partial_day(C),"the hospital stay of $C$ was too short")
-        (~partial_day(C),"the hospital stay of $C$ was long enough")
+        (partial_day(C),"the hospital stay of $C$ lasted less than one day")
+        (~partial_day(C),"the hospital stay of $C$ lasted at least one day")
         (claim.hospitalization(C,Z),"the hospitalization of $C$ is $Z$")
         (duration(Z,T),"the duration of $Z$ was $T$ milliseconds")
         (less(X,Y),"$X$ is less than $Y$")
