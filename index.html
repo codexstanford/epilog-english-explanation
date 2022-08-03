@@ -8,6 +8,7 @@
         <script language='javascript' src='./src/explain.js'></script>
         
         <script language='javascript' src='./src/localstorage.js'></script>
+        <script language='javascript' src='./src/language_utils.js'></script>
         <script language='javascript' src='./src/epilog_database.js'></script>    
         <script language='javascript' src='./src/english_explanation.js'></script>
         <script language='javascript'>
@@ -1671,6 +1672,15 @@
 
         policy.claim(X,Y) :- claim.policy(Y,X)
 
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%% geography-related definitions
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        same_continent(C1,C2) :- 
+            country.continent(C1,X) &
+            country.continent(C2,X)
+
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%% general definitions and predefined relations
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2046,6 +2056,8 @@
         (hospitalization.endtime(Z,T),"$Z$ ended at $T$")
         (hospitalization.cause(Z,C),"$Z$ was caused by $C$")
         (accident.activity(C,A),"the activity in $C$ was $A$")
+        (same_continent(C1,C2),"$C1$ and $C2$ are on the same continent")
+        (country.continent(C1,X),"$C1$ is on $X$")
         (overlap(XS,XE,YS,YE),"[$XS$, $XE$] overlaps with [$YS$, $YE$]")
         (distinct(X,Y),"$X$ is not equal to $Y$")
         (evaluate(parsedate(DATE),[Y,M,D]),"$DATE$ parses as [$Y$,$M$,$D$]")
