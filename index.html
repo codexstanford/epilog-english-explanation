@@ -35,13 +35,16 @@
 
                 createEventListeners();
 
+                // Set options if they haven't been initialized.
+                setAllOptions(false, defaultOptions);
+
                 // Don't load data unless this is the user's first visit to the page.
                 loadEpilogAndTemplates(false).then(() => {
                     ({facts, rules, metadata, english_templates} = getEpilogAndTemplates());
                 
                     const urlParameters = new URLSearchParams(window.location.search);
 
-                    const options = loadOptions(urlParameters);
+                    const options = getOptions(urlParameters);
 
                     setOptionCheckboxes(options);
                     updateUsingUploadedDataIndicator();
@@ -60,40 +63,48 @@
                 });
             }
 
-            function loadOptions(urlParameters) {
-                // TODO: if no url param, use the options set by the user the last time they were on the page (stored in localstorage)
-                let options = defaultOptions;
+            function getOptions(urlParameters) {
+                // Get all options from localstorage
+                let options = getAllOptions();
 
-                // Load from url params
-                if (urlParameters.has("replaceWithType")) {
-                    options.replaceWithType =  (urlParameters.get("replaceWithType") === 'true');
-                }
-                if (urlParameters.has("removeClassAttributes")) {
-                    options.removeClassAttributes =  (urlParameters.get("removeClassAttributes") === 'true');
-                }
-                if (urlParameters.has("bindLocalConstants")) {
-                    options.bindLocalConstants =  (urlParameters.get("bindLocalConstants") === 'true');
-                }
-                if (urlParameters.has("verifyDerivable")) {
-                    options.verifyDerivable =  (urlParameters.get("verifyDerivable") === 'true');
-                }
-                if (urlParameters.has("linkFromExplanation")) {
-                    options.linkFromExplanation =  (urlParameters.get("linkFromExplanation") === 'true');
-                }
-                if (urlParameters.has("linkGivenFacts")) {
-                    options.linkGivenFacts =  (urlParameters.get("linkGivenFacts") === 'true');
-                }
+                console.log(options);
+
+                // Override with options from url params.
+                options.replaceWithType = getOptionFromParams("replaceWithType", urlParameters, options.replaceWithType);
+                options.removeClassAttributes = getOptionFromParams("removeClassAttributes", urlParameters, options.removeClassAttributes);
+                options.bindLocalConstants = getOptionFromParams("bindLocalConstants", urlParameters, options.bindLocalConstants);
+                options.verifyDerivable = getOptionFromParams("verifyDerivable", urlParameters, options.verifyDerivable);
+                options.linkFromExplanation = getOptionFromParams("linkFromExplanation", urlParameters, options.linkFromExplanation);
+                options.linkGivenFacts = getOptionFromParams("linkGivenFacts", urlParameters, options.linkGivenFacts);
+
+                // Update the options in localstorage
+                setAllOptions(true, options);
 
                 return options;
             }
 
-            function setOptionCheckboxes(option) {
-                document.getElementById("replaceWithType").checked = option.replaceWithType;
-                document.getElementById("removeClassAttributes").checked = option.removeClassAttributes;
-                document.getElementById("bindLocalConstants").checked = option.bindLocalConstants;
-                document.getElementById("verifyDerivable").checked = option.verifyDerivable;
-                document.getElementById("linkFromExplanation").checked = option.linkFromExplanation;
-                document.getElementById("linkGivenFacts").checked = option.linkGivenFacts;
+            // Assumes this is a boolean option.
+            function getOptionFromParams(optionName, urlParameters, defaultVal) {
+                if (urlParameters.has(optionName)) {
+                    return (urlParameters.get(optionName) === 'true');
+                } 
+                
+                // If no url param for the option, return the default value.
+                // localstorage only stores strings, so converting to boolean.
+                return defaultVal === "true";
+            }
+
+            function setOptionCheckboxes(options) {
+                console.log("setting removeclassattributes",options.removeClassAttributes);
+
+                document.getElementById("replaceWithType").checked = options.replaceWithType;
+                document.getElementById("removeClassAttributes").checked = options.removeClassAttributes;
+                document.getElementById("bindLocalConstants").checked = options.bindLocalConstants;
+                document.getElementById("verifyDerivable").checked = options.verifyDerivable;
+                document.getElementById("linkFromExplanation").checked = options.linkFromExplanation;
+                document.getElementById("linkGivenFacts").checked = options.linkGivenFacts;
+
+                console.log("getting removeclassattributes",document.getElementById("removeClassAttributes").checked);
             }
 
             // Use whenever calling loadEpilogAndTemplates; defined and used here for MVC decomposition.

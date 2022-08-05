@@ -23,6 +23,9 @@
 // setMetadataFile
 // setTemplatesFile
 //
+// setAllOptions
+// getAllOptions
+//
 // isEpilogFactsLoaded
 // isEpilogRulesLoaded
 // isEpilogMetadataLoaded
@@ -52,6 +55,12 @@
 // loadEpilogMetadata (async)
 // loadEnglishTemplates (async)
 //
+// setAllOptions
+// setOption
+//
+// getAllOptions
+// getOption
+//
 // isEpilogFactsLoaded
 // isEpilogRulesLoaded
 // isEpilogMetadataLoaded
@@ -70,6 +79,8 @@ const EPILOG_METADATA_KEY = "metadata";
 const ENGLISH_TEMPLATES_KEY = "english_templates";
 
 const UPLOADED_FILENAME_KEY_SUFFIX = "_uploaded_filename";
+
+const OPTION_KEY_PREFIX = "option_";
 
 // These specify from which files to load facts, rules, metadata, and templates.
 // When these are null, we load from hidden divs on the webpage.
@@ -202,6 +213,51 @@ async function loadEnglishTemplates(overwriteExisting) {
 
     localStorage[ENGLISH_TEMPLATES_KEY] = englishTemplatesTextData;
     localStorage[ENGLISH_TEMPLATES_KEY + UPLOADED_FILENAME_KEY_SUFFIX] = englishTemplatesSelectedFileName;
+}
+
+function setAllOptions(overwriteExisting, options) {
+    for (const [optionName, val] of Object.entries(options)) {
+        setOption(overwriteExisting, optionName, val);
+    }
+}
+
+function setOption(overwriteExisting, optionName, newVal) {
+    const OPTION_KEY = OPTION_KEY_PREFIX + optionName; 
+
+    if (!overwriteExisting && isOptionLoaded(optionName)) {
+        return;
+    }
+
+    localStorage[OPTION_KEY] = newVal;
+}
+
+function getAllOptions() {
+    let options = {};
+
+    for (const key in localStorage) {
+        if (!key.startsWith(OPTION_KEY_PREFIX)) {
+            continue;
+        }
+
+        let optionName = key.slice(OPTION_KEY_PREFIX.length);
+
+        options[optionName] = getOption(optionName);
+    }
+    
+    return options;
+}
+
+function getOption(optionName) {
+    if (!isOptionLoaded(optionName)) {
+        console.log("[Warning] getOption -",optionName,"is not loaded.")
+        return false;
+    }
+
+    return localStorage[OPTION_KEY_PREFIX + optionName];
+}
+
+function isOptionLoaded(optionName) {
+    return localStorage.getItem(OPTION_KEY_PREFIX + optionName) !== null;
 }
 
 function isEpilogFactsLoaded() {
