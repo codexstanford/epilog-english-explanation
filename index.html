@@ -20,12 +20,15 @@
             const defaultOptions = 
                                 {typePredicate: "type", 
                                 replaceWithType: true, 
-                                removeClassAttributes: true,
-                                bindLocalConstants: false,
+                                removeClassAttributes: false,
+                                bindLocalConstants: true,
                                 verifyDerivable: true,
                                 useMetadata: true,
                                 linkFromExplanation: true,
                                 linkGivenFacts: true};
+
+            // Global to this file.
+            let facts, rules, metadata, english_templates;
             
             function doinit () {
                 let widget = document.getElementById('explanation');
@@ -34,7 +37,7 @@
 
                 // Don't load data unless this is the user's first visit to the page.
                 loadEpilogAndTemplates(false).then(() => {
-                    let {facts, rules, metadata, english_templates} = getEpilogAndTemplates();
+                    ({facts, rules, metadata, english_templates} = getEpilogAndTemplates());
                 
                     const urlParameters = new URLSearchParams(window.location.search);
 
@@ -58,9 +61,10 @@
             }
 
             function loadOptions(urlParameters) {
-                // TODO: use the options set by the user the last time they were on the page (stored in localstorage)
+                // TODO: if no url param, use the options set by the user the last time they were on the page (stored in localstorage)
                 let options = defaultOptions;
 
+                // Load from url params
                 if (urlParameters.has("replaceWithType")) {
                     options.replaceWithType =  (urlParameters.get("replaceWithType") === 'true');
                 }
@@ -131,6 +135,49 @@
 
                 location = newLocation;
             }
+
+            // Fill the conclusion input textarea with a random fact that matches a template.
+                // Not a uniformly random fact; a template is chosen uniformly at random, then a fact is chosen uniformly at random from those that matched the template.
+            function onClickGenerateExampleInputHandler() {
+                let input_textarea = document.getElementById('input_conclusion');
+
+                if (facts.length === 0) {
+                    console.log("[Warning] No facts have been loaded.");
+                    input_textarea.value = "Could not generate example: No facts have been loaded.";
+                    return;
+                }
+
+                let english_templates_copy = [...english_templates];
+                let randomFact = null;
+
+                // Randomly pick templates until one can be found with matching facts.
+                while (english_templates_copy.length > 0) {
+                    let randomIndex = Math.floor(Math.random()*english_templates_copy.length);
+                    let randomTemplate = english_templates_copy[randomIndex];
+
+                    let queryGoal = randomTemplate.getQueryAsList()
+                    
+                    let randomMatchedFacts = compfinds(queryGoal, queryGoal, facts, rules);
+
+                    // Found matching facts for the template
+                    if (randomMatchedFacts.length > 0) {
+                        randomFact = randomMatchedFacts[Math.floor(Math.random()*randomMatchedFacts.length)];
+                        break;
+                    }
+
+                    // Did not find matching fact, so remove template from the list and try again.
+                    english_templates_copy.splice(randomIndex, 1);
+                }
+
+
+                if (randomFact === null) {
+                    console.log("[Warning] No fact could be found that matched a template. Selecting random fact.");
+                    randomFact = facts[Math.floor(Math.random()*facts.length)];
+                }
+                        
+                // Update the conclusion input textarea
+                input_textarea.value = grind(randomFact);
+            }
             
             function toggleReadonlyTextareaVisibility(textareaWidgetId) {
                 let textareaWidget = document.getElementById(textareaWidgetId);
@@ -193,32 +240,32 @@
             }
 
             function handleFileSelectedChange(event, fileSelectorWidgetId) {
-            let filesSelected = document.getElementById(fileSelectorWidgetId).files;
+                let filesSelected = document.getElementById(fileSelectorWidgetId).files;
 
-            if (filesSelected.length === 0) {
-                console.log("[Warning] No file selected for", fileSelectorWidgetId)
-                return;
+                if (filesSelected.length === 0) {
+                    console.log("[Warning] No file selected for", fileSelectorWidgetId)
+                    return;
+                }
+
+                
+                let selectedFileName = filesSelected[0].name;
+                // Update the selected files
+                switch (fileSelectorWidgetId) {
+                    case FACTS_FILE_SELECTOR_ID:
+                        document.getElementById("selected_facts_filename").innerHTML = selectedFileName;
+                        break;
+                    case RULES_FILE_SELECTOR_ID:
+                        document.getElementById("selected_rules_filename").innerHTML = selectedFileName;
+                        break;
+                    case METADATA_FILE_SELECTOR_ID:
+                        document.getElementById("selected_metadata_filename").innerHTML = selectedFileName;
+                        break;
+                    case TEMPLATES_FILE_SELECTOR_ID:
+                        document.getElementById("selected_templates_filename").innerHTML = selectedFileName;
+                        break;
+                }
+
             }
-
-            
-            let selectedFileName = filesSelected[0].name;
-            // Update the selected files
-            switch (fileSelectorWidgetId) {
-                case FACTS_FILE_SELECTOR_ID:
-                    document.getElementById("selected_facts_filename").innerHTML = selectedFileName;
-                    break;
-                case RULES_FILE_SELECTOR_ID:
-                    document.getElementById("selected_rules_filename").innerHTML = selectedFileName;
-                    break;
-                case METADATA_FILE_SELECTOR_ID:
-                    document.getElementById("selected_metadata_filename").innerHTML = selectedFileName;
-                    break;
-                case TEMPLATES_FILE_SELECTOR_ID:
-                    document.getElementById("selected_templates_filename").innerHTML = selectedFileName;
-                    break;
-            }
-
-        }
 
         </script>
       
@@ -258,7 +305,7 @@
             <label for="replaceWithType" class="option_checkbox_label"> replaceWithType </label><br>
         </div>
         <div>
-            <input type="checkbox" id="removeClassAttributes" class="option_checkbox" name="removeClassAttributes" checked="true">
+            <input type="checkbox" id="removeClassAttributes" class="option_checkbox" name="removeClassAttributes" checked="false">
             <label for="removeClassAttributes" class="option_checkbox_label"> removeClassAttributes </label><br>
         </div>
         <div>
@@ -278,9 +325,15 @@
             <label for="linkGivenFacts" class="option_checkbox_label"> linkGivenFacts </label><br>
         </div>
     </div>
-    <textarea id='input_conclusion' class='input_textarea' rows='8' cols='80' wrap='soft' placeholder='Paste the Epilog ground atom you would like explained here.'></textarea>
-
     
+    <textarea id='input_conclusion' class='input_textarea' rows='8' cols='80' wrap='soft' placeholder='Paste the Epilog ground atom you would like explained here.&#10&#10Click the button below for an example.'></textarea>
+
+    <div id = "button_container_randomExample" class="button_container">
+        <input type='button' value="Random Example" onClick='onClickGenerateExampleInputHandler();'/>
+    </div>
+    
+    <hr class='horizontal_divider_fileUploading'/>
+
     <!--=======================================================================-->
 
     <div id = "button_container_data_loading" class="button_container">

@@ -342,8 +342,6 @@ function getEnglishTemplates(englishTemplateStr = null) {
         return false;
     }
 
-    console.log("templates",templates);
-
     return templates;
 }
 

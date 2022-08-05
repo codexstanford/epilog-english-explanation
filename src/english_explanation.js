@@ -225,7 +225,7 @@ class FactWrapper {
         switch (proceduralTemplateType) {
             case 'none':
                 break;
-                
+
             case 'attributeRelation_unique':
                 let relation = this.getPredicateSymbol();
                 if (!isAttributeRelation(relation, facts, rules, metadata, options)) {
@@ -385,7 +385,7 @@ function toEnglish(conclusion,
                    rules,
                    metadata,
                    english_templates, 
-                   options = {typePredicate: "type", replaceWithType: true, removeClassAttributes: true, bindLocalConstants: false, verifyDerivable: true, useMetadata: true, linkFromExplanation: true, linkGivenFacts: true }) {
+                   options = {typePredicate: "type", replaceWithType: true, removeClassAttributes: false, bindLocalConstants: true, verifyDerivable: true, useMetadata: true, linkFromExplanation: true, linkGivenFacts: true }) {
 
     // Note: If replaceWithType is false, bindLocalConstants is irrelevant
     // Note: if linkFromExplanation is false, linkGivenFacts is irrelevant
