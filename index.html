@@ -8,6 +8,7 @@
         <script language='javascript' src='./src/explain.js'></script>
         
         <script language='javascript' src='./src/localstorage.js'></script>
+        <script language='javascript' src='./src/language_utils.js'></script>
         <script language='javascript' src='./src/epilog_database.js'></script>    
         <script language='javascript' src='./src/english_explanation.js'></script>
         <script language='javascript'>
@@ -19,25 +20,31 @@
             const defaultOptions = 
                                 {typePredicate: "type", 
                                 replaceWithType: true, 
-                                removeClassAttributes: true,
-                                bindLocalConstants: false,
+                                removeClassAttributes: false,
+                                bindLocalConstants: true,
                                 verifyDerivable: true,
                                 useMetadata: true,
                                 linkFromExplanation: true,
                                 linkGivenFacts: true};
+
+            // Global to this file.
+            let facts, rules, metadata, english_templates;
             
             function doinit () {
                 let widget = document.getElementById('explanation');
 
                 createEventListeners();
 
+                // Set options if they haven't been initialized.
+                setAllOptions(false, defaultOptions);
+
                 // Don't load data unless this is the user's first visit to the page.
                 loadEpilogAndTemplates(false).then(() => {
-                    let {facts, rules, metadata, english_templates} = getEpilogAndTemplates();
+                    ({facts, rules, metadata, english_templates} = getEpilogAndTemplates());
                 
                     const urlParameters = new URLSearchParams(window.location.search);
 
-                    const options = loadOptions(urlParameters);
+                    const options = getOptions(urlParameters);
 
                     setOptionCheckboxes(options);
                     updateUsingUploadedDataIndicator();
@@ -56,38 +63,48 @@
                 });
             }
 
-            function loadOptions(urlParameters) {
-                let options = defaultOptions;
+            function getOptions(urlParameters) {
+                // Get all options from localstorage
+                let options = getAllOptions();
 
-                if (urlParameters.has("replaceWithType")) {
-                    options.replaceWithType =  (urlParameters.get("replaceWithType") === 'true');
-                }
-                if (urlParameters.has("removeClassAttributes")) {
-                    options.removeClassAttributes =  (urlParameters.get("removeClassAttributes") === 'true');
-                }
-                if (urlParameters.has("bindLocalConstants")) {
-                    options.bindLocalConstants =  (urlParameters.get("bindLocalConstants") === 'true');
-                }
-                if (urlParameters.has("verifyDerivable")) {
-                    options.verifyDerivable =  (urlParameters.get("verifyDerivable") === 'true');
-                }
-                if (urlParameters.has("linkFromExplanation")) {
-                    options.linkFromExplanation =  (urlParameters.get("linkFromExplanation") === 'true');
-                }
-                if (urlParameters.has("linkGivenFacts")) {
-                    options.linkGivenFacts =  (urlParameters.get("linkGivenFacts") === 'true');
-                }
+                console.log(options);
+
+                // Override with options from url params.
+                options.replaceWithType = getOptionFromParams("replaceWithType", urlParameters, options.replaceWithType);
+                options.removeClassAttributes = getOptionFromParams("removeClassAttributes", urlParameters, options.removeClassAttributes);
+                options.bindLocalConstants = getOptionFromParams("bindLocalConstants", urlParameters, options.bindLocalConstants);
+                options.verifyDerivable = getOptionFromParams("verifyDerivable", urlParameters, options.verifyDerivable);
+                options.linkFromExplanation = getOptionFromParams("linkFromExplanation", urlParameters, options.linkFromExplanation);
+                options.linkGivenFacts = getOptionFromParams("linkGivenFacts", urlParameters, options.linkGivenFacts);
+
+                // Update the options in localstorage
+                setAllOptions(true, options);
 
                 return options;
             }
 
-            function setOptionCheckboxes(option) {
-                document.getElementById("replaceWithType").checked = option.replaceWithType;
-                document.getElementById("removeClassAttributes").checked = option.removeClassAttributes;
-                document.getElementById("bindLocalConstants").checked = option.bindLocalConstants;
-                document.getElementById("verifyDerivable").checked = option.verifyDerivable;
-                document.getElementById("linkFromExplanation").checked = option.linkFromExplanation;
-                document.getElementById("linkGivenFacts").checked = option.linkGivenFacts;
+            // Assumes this is a boolean option.
+            function getOptionFromParams(optionName, urlParameters, defaultVal) {
+                if (urlParameters.has(optionName)) {
+                    return (urlParameters.get(optionName) === 'true');
+                } 
+                
+                // If no url param for the option, return the default value.
+                // localstorage only stores strings, so converting to boolean.
+                return defaultVal === "true";
+            }
+
+            function setOptionCheckboxes(options) {
+                console.log("setting removeclassattributes",options.removeClassAttributes);
+
+                document.getElementById("replaceWithType").checked = options.replaceWithType;
+                document.getElementById("removeClassAttributes").checked = options.removeClassAttributes;
+                document.getElementById("bindLocalConstants").checked = options.bindLocalConstants;
+                document.getElementById("verifyDerivable").checked = options.verifyDerivable;
+                document.getElementById("linkFromExplanation").checked = options.linkFromExplanation;
+                document.getElementById("linkGivenFacts").checked = options.linkGivenFacts;
+
+                console.log("getting removeclassattributes",document.getElementById("removeClassAttributes").checked);
             }
 
             // Use whenever calling loadEpilogAndTemplates; defined and used here for MVC decomposition.
@@ -128,6 +145,49 @@
                 newLocation += "&linkGivenFacts=" + document.getElementById("linkGivenFacts").checked;
 
                 location = newLocation;
+            }
+
+            // Fill the conclusion input textarea with a random fact that matches a template.
+                // Not a uniformly random fact; a template is chosen uniformly at random, then a fact is chosen uniformly at random from those that matched the template.
+            function onClickGenerateExampleInputHandler() {
+                let input_textarea = document.getElementById('input_conclusion');
+
+                if (facts.length === 0) {
+                    console.log("[Warning] No facts have been loaded.");
+                    input_textarea.value = "Could not generate example: No facts have been loaded.";
+                    return;
+                }
+
+                let english_templates_copy = [...english_templates];
+                let randomFact = null;
+
+                // Randomly pick templates until one can be found with matching facts.
+                while (english_templates_copy.length > 0) {
+                    let randomIndex = Math.floor(Math.random()*english_templates_copy.length);
+                    let randomTemplate = english_templates_copy[randomIndex];
+
+                    let queryGoal = randomTemplate.getQueryAsList()
+                    
+                    let randomMatchedFacts = compfinds(queryGoal, queryGoal, facts, rules);
+
+                    // Found matching facts for the template
+                    if (randomMatchedFacts.length > 0) {
+                        randomFact = randomMatchedFacts[Math.floor(Math.random()*randomMatchedFacts.length)];
+                        break;
+                    }
+
+                    // Did not find matching fact, so remove template from the list and try again.
+                    english_templates_copy.splice(randomIndex, 1);
+                }
+
+
+                if (randomFact === null) {
+                    console.log("[Warning] No fact could be found that matched a template. Selecting random fact.");
+                    randomFact = facts[Math.floor(Math.random()*facts.length)];
+                }
+                        
+                // Update the conclusion input textarea
+                input_textarea.value = grind(randomFact);
             }
             
             function toggleReadonlyTextareaVisibility(textareaWidgetId) {
@@ -191,32 +251,32 @@
             }
 
             function handleFileSelectedChange(event, fileSelectorWidgetId) {
-            let filesSelected = document.getElementById(fileSelectorWidgetId).files;
+                let filesSelected = document.getElementById(fileSelectorWidgetId).files;
 
-            if (filesSelected.length === 0) {
-                console.log("[Warning] No file selected for", fileSelectorWidgetId)
-                return;
+                if (filesSelected.length === 0) {
+                    console.log("[Warning] No file selected for", fileSelectorWidgetId)
+                    return;
+                }
+
+                
+                let selectedFileName = filesSelected[0].name;
+                // Update the selected files
+                switch (fileSelectorWidgetId) {
+                    case FACTS_FILE_SELECTOR_ID:
+                        document.getElementById("selected_facts_filename").innerHTML = selectedFileName;
+                        break;
+                    case RULES_FILE_SELECTOR_ID:
+                        document.getElementById("selected_rules_filename").innerHTML = selectedFileName;
+                        break;
+                    case METADATA_FILE_SELECTOR_ID:
+                        document.getElementById("selected_metadata_filename").innerHTML = selectedFileName;
+                        break;
+                    case TEMPLATES_FILE_SELECTOR_ID:
+                        document.getElementById("selected_templates_filename").innerHTML = selectedFileName;
+                        break;
+                }
+
             }
-
-            
-            let selectedFileName = filesSelected[0].name;
-            // Update the selected files
-            switch (fileSelectorWidgetId) {
-                case FACTS_FILE_SELECTOR_ID:
-                    document.getElementById("selected_facts_filename").innerHTML = selectedFileName;
-                    break;
-                case RULES_FILE_SELECTOR_ID:
-                    document.getElementById("selected_rules_filename").innerHTML = selectedFileName;
-                    break;
-                case METADATA_FILE_SELECTOR_ID:
-                    document.getElementById("selected_metadata_filename").innerHTML = selectedFileName;
-                    break;
-                case TEMPLATES_FILE_SELECTOR_ID:
-                    document.getElementById("selected_templates_filename").innerHTML = selectedFileName;
-                    break;
-            }
-
-        }
 
         </script>
       
@@ -240,7 +300,7 @@
     
     <div id='explanation'>
     </div>
-    
+
     
       
     <br/>
@@ -256,7 +316,7 @@
             <label for="replaceWithType" class="option_checkbox_label"> replaceWithType </label><br>
         </div>
         <div>
-            <input type="checkbox" id="removeClassAttributes" class="option_checkbox" name="removeClassAttributes" checked="true">
+            <input type="checkbox" id="removeClassAttributes" class="option_checkbox" name="removeClassAttributes" checked="false">
             <label for="removeClassAttributes" class="option_checkbox_label"> removeClassAttributes </label><br>
         </div>
         <div>
@@ -276,9 +336,15 @@
             <label for="linkGivenFacts" class="option_checkbox_label"> linkGivenFacts </label><br>
         </div>
     </div>
-    <textarea id='input_conclusion' class='input_textarea' rows='8' cols='80' wrap='soft' placeholder='Paste the Epilog ground atom you would like explained here.'></textarea>
-
     
+    <textarea id='input_conclusion' class='input_textarea' rows='8' cols='80' wrap='soft' placeholder='Paste the Epilog ground atom you would like explained here.&#10&#10Click the button below for an example.'></textarea>
+
+    <div id = "button_container_randomExample" class="button_container">
+        <input type='button' value="Random Example" onClick='onClickGenerateExampleInputHandler();'/>
+    </div>
+    
+    <hr class='horizontal_divider_fileUploading'/>
+
     <!--=======================================================================-->
 
     <div id = "button_container_data_loading" class="button_container">
@@ -1112,6 +1178,15 @@
         type(south_america,continent)
         type(oceania,continent)
 
+        adjacent_continent(africa,europe)
+        adjacent_continent(europe,africa)
+        adjacent_continent(europe,asia)
+        adjacent_continent(asia,europe)
+        adjacent_continent(asia,africa)
+        adjacent_continent(africa,asia)
+        adjacent_continent(north_america,south_america)
+        adjacent_continent(south_america,north_america)
+
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%% date
         %%% YYYY_MM_DD
@@ -1670,6 +1745,20 @@
 
         policy.claim(X,Y) :- claim.policy(Y,X)
 
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%% geography-related definitions
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+        same_continent(C1,C2) :- 
+            country.continent(C1,X) &
+            country.continent(C2,X)
+
+        adjacent_continent_countries(C1,C2) :-
+            country.continent(C1,X1) &
+            country.continent(C2,X2) &
+            adjacent_continent(X1,X2)
+
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%% general definitions and predefined relations
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1957,6 +2046,12 @@
         unique(hospitalization.patient,yes)
         total(hospitalization.patient,yes)
 
+        type(hospitalization.hospital,attributerelation)
+        domain(hospitalization.hospital,hospitalization)
+        range(hospitalization.hospital,hospital)
+        unique(hospitalization.hospital,yes)
+        total(hospitalization.hospital,yes)
+
         type(hospitalization.diagnosis,attributerelation)
         domain(hospitalization.diagnosis,hospitalization)
         range(hospitalization.diagnosis,diagnosis)
@@ -2017,16 +2112,16 @@
     <!-- Expected format of english templates is specified in localstorage.js above the getTemplates() function -->
     <p id='english_templates_label' class='readonly_textarea_label' style='display:none'>Default English Templates</p>
     <textarea id='english_templates' class='readonly_textarea' readonly rows='12' cols='96' wrap='soft' style='display:none'>
-        (claim.policy(C,P),"the policy of $C$ is $P$")
+        %(claim.policy(C,P),"the policy of $C$ is $P$")
         (policy.startdate(P,S),"$P$ began on $S$")
         (policy.enddate(P,E),"$P$ ended on $E$")
         (claim.recommendation(C,decline),"$C$ was declined")
         (claim.recommendation(C,pay),"$C$ was paid")
         (plan_in_effect(C),"a plan was in effect during the period of $C$")
         (claim.exclusion(C,preexist),"the affliction in $C$ is a pre-existing condition")
-        (partial_day(C),"the hospital stay of $C$ was too short")
-        (~partial_day(C),"the hospital stay of $C$ was long enough")
-        (claim.hospitalization(C,Z),"the hospitalization of $C$ is $Z$")
+        (partial_day(C),"the hospital stay of $C$ lasted less than one day")
+        (~partial_day(C),"the hospital stay of $C$ lasted at least one day")
+        %(claim.hospitalization(C,Z),"the hospitalization of $C$ is $Z$")
         (duration(Z,T),"the duration of $Z$ was $T$ milliseconds")
         (less(X,Y),"$X$ is less than $Y$")
         (exclusion(C,4.3i),"the claim violates exclusion 4.3i")
@@ -2039,6 +2134,10 @@
         (hospitalization.endtime(Z,T),"$Z$ ended at $T$")
         (hospitalization.cause(Z,C),"$Z$ was caused by $C$")
         (accident.activity(C,A),"the activity in $C$ was $A$")
+        (same_continent(C1,C2),"$C1$ and $C2$ reside on the same continent")
+        (adjacent_continent_countries(C1,C2), "$C1$ and $C2$ are on adjacent continents")
+        (adjacent_continent(X1,X2), "$X1$ and $X2$ are adjacent")
+        %(country.continent(C,X),"$X$ is the continent on which $C$ resides")
         (overlap(XS,XE,YS,YE),"[$XS$, $XE$] overlaps with [$YS$, $YE$]")
         (distinct(X,Y),"$X$ is not equal to $Y$")
         (evaluate(parsedate(DATE),[Y,M,D]),"$DATE$ parses as [$Y$,$M$,$D$]")
@@ -2048,6 +2147,10 @@
         (evaluate(stringmin(X,Y),Z),"the minimum of $X$ and $Y$ is $Z$")
         (evaluate(minus(X,Y),Z),"$X$ minus $Y$ is $Z$")
         (countofall(E,exclusion(C,E),0),"there is no exclusion for $C$")
+        % Procedural templates for unique attributes
+        (claim.hospitalization, "hospitalization", "listed in $C$")
+        (country.continent, "continent", "on which $C$ resides")
+        (claim.policy, "policy", "under which $C$ was filed")
     </textarea>
 
     <!--=======================================================================-->

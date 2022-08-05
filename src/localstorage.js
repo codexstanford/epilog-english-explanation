@@ -23,6 +23,9 @@
 // setMetadataFile
 // setTemplatesFile
 //
+// setAllOptions
+// getAllOptions
+//
 // isEpilogFactsLoaded
 // isEpilogRulesLoaded
 // isEpilogMetadataLoaded
@@ -52,6 +55,12 @@
 // loadEpilogMetadata (async)
 // loadEnglishTemplates (async)
 //
+// setAllOptions
+// setOption
+//
+// getAllOptions
+// getOption
+//
 // isEpilogFactsLoaded
 // isEpilogRulesLoaded
 // isEpilogMetadataLoaded
@@ -70,6 +79,8 @@ const EPILOG_METADATA_KEY = "metadata";
 const ENGLISH_TEMPLATES_KEY = "english_templates";
 
 const UPLOADED_FILENAME_KEY_SUFFIX = "_uploaded_filename";
+
+const OPTION_KEY_PREFIX = "option_";
 
 // These specify from which files to load facts, rules, metadata, and templates.
 // When these are null, we load from hidden divs on the webpage.
@@ -204,6 +215,51 @@ async function loadEnglishTemplates(overwriteExisting) {
     localStorage[ENGLISH_TEMPLATES_KEY + UPLOADED_FILENAME_KEY_SUFFIX] = englishTemplatesSelectedFileName;
 }
 
+function setAllOptions(overwriteExisting, options) {
+    for (const [optionName, val] of Object.entries(options)) {
+        setOption(overwriteExisting, optionName, val);
+    }
+}
+
+function setOption(overwriteExisting, optionName, newVal) {
+    const OPTION_KEY = OPTION_KEY_PREFIX + optionName; 
+
+    if (!overwriteExisting && isOptionLoaded(optionName)) {
+        return;
+    }
+
+    localStorage[OPTION_KEY] = newVal;
+}
+
+function getAllOptions() {
+    let options = {};
+
+    for (const key in localStorage) {
+        if (!key.startsWith(OPTION_KEY_PREFIX)) {
+            continue;
+        }
+
+        let optionName = key.slice(OPTION_KEY_PREFIX.length);
+
+        options[optionName] = getOption(optionName);
+    }
+    
+    return options;
+}
+
+function getOption(optionName) {
+    if (!isOptionLoaded(optionName)) {
+        console.log("[Warning] getOption -",optionName,"is not loaded.")
+        return false;
+    }
+
+    return localStorage[OPTION_KEY_PREFIX + optionName];
+}
+
+function isOptionLoaded(optionName) {
+    return localStorage.getItem(OPTION_KEY_PREFIX + optionName) !== null;
+}
+
 function isEpilogFactsLoaded() {
     return localStorage.getItem(EPILOG_FACTS_KEY) !== null;
 }
@@ -241,25 +297,30 @@ class TemplateWrapper {
     *   templateString: the unfilled template string for that query goal.
     *   varSequence: an array containing the variables in the template that appear in the query goal, 
     *                            ordered as they appear in the template.
+    *   proceduralType: the type of procedural template this is. 
+    *       If custom, is 'none'.
+    *       If for a unique attribute relation, is 'attributeRelation_unique'.
     * 
     * This format is extremely useful for operations performed in english_explanation.js.
     */
    
-    constructor(queryGoal, templateString, varSequence) {
+    constructor(queryGoal, templateString, varSequence, proceduralType = 'none') {
         if (typeof(queryGoal) === "string") {
             queryGoal = read(queryGoal);
         }
         this.queryGoal = queryGoal;
         this.templateString = templateString;
         this.varSequence = varSequence;
+
+        this.proceduralType = proceduralType;
     }
 
-    queryAsList() {
+    getQueryAsList() {
         return this.queryGoal;
     }
 }
 
-/* Parses input string of english templates into an array.
+/* Parses input string of english templates into an array of TemplateWrappers.
  * If no argument provided, parses string data from localStorage[ENGLISH_TEMPLATES_KEY].
  * 
  * Expected format of string data in localStorage[ENGLISH_TEMPLATES_KEY]:
@@ -273,6 +334,8 @@ class TemplateWrapper {
  * 
  * Returns an array containing one TemplateWrapper for each template.
  * If invalid argument or templates haven't been loaded into localStorage, returns false.
+ * 
+ * Note: can also contain arguments for procedural templates, in addition to template pairs. See the documentation for the constructProceduralTemplate methods for formatting.
  * 
  * e.g. if localStorage[ENGLISH_TEMPLATES_KEY] is the two-line string "(claim.policy(C,P),"the policy of $C$ is $P$") \n (policy.startdate(P,S),"$P$ began on $S$")",
         returns [new TemplateWrapper("claim.policy(C,P)", "the policy of $C$ is $P$", ["C", "P"]),
@@ -297,30 +360,35 @@ function getEnglishTemplates(englishTemplateStr = null) {
 
     let templates = [];
 
-    for (const pairStr of templatePairStrings) {
-        //Convert to an epilog string to delegate parsing to epilog.js
-        const [queryGoal, templateStr] = read("english" + pairStr.trim()).slice(1);
+    for (const argStr of templatePairStrings) {
+        // Ignore comments
+        if (argStr.trim()[0] === '%') {
+            continue;
+        }
 
+        //Convert to an epilog string to delegate parsing to epilog.js
+        const argList = read("english" + argStr.trim()).slice(1);
+
+        // Procedural template for attribute relations.
+            // Assumes the attribute relation is unique.
+        if (argList.length === 3) {
+            let proceduralTemplate = constructProceduralTemplate_attributeRelation_unique(argList);
+            if (proceduralTemplate !== false) {
+                templates.push(proceduralTemplate);
+            }
+            continue;
+        }
+
+        // Custom template.
+        const [queryGoal, templateStr] = argList;
        
         //Get the variables from the goal
         const varSet = vars(queryGoal);
         
         //Scan the templateStr for instances of the vars, if any are present in the goal
-        let varSequence = [];
-        if (varSet.length !== 0) {
-            let re = new RegExp('\\$' + varSet.join('\\$|\\$') + '\\$', 'g');
-            varSequence = templateStr.match(re);
+        let varSequence = varSeqFromStr(templateStr, varSet);
 
-            if (varSequence === null) {
-                varSequence = [];
-            }
-
-            //Remove the '$' symbols
-            varSequence.forEach((matchedStr, index) => {
-                varSequence[index] = matchedStr.slice(1, matchedStr.length-1);
-            });
-        }
-
+        // Add the assembled template
         templates.push(new TemplateWrapper(queryGoal, templateStr, varSequence));
     } 
 
@@ -333,6 +401,113 @@ function getEnglishTemplates(englishTemplateStr = null) {
     return templates;
 }
 
+/* Parses input array of 3 strings into a TemplateWrapper with a procedural template.
+ * Assumes the attribute relation is unique.
+ *      - Does not check metadata for this, primarily because, in explanations, we want to treat attributes as though they're unique when they are unique for a given class instance.
+ *  
+ * Expected format of array of strings:
+ *      - first element: The attribute relation that the template will apply to.
+ *      - second element: The natural language term for the attribute, excluding determiners/articles. Should be surrounded by double quotes.
+ *      - third element: The end of the template, which must contain one-and-only-one variable. Should be surrounded by double quotes.
+ * 
+ * If the third element does not contain exactly one variable, returns false.
+ * 
+ * e.g. if localStorage[ENGLISH_TEMPLATES_KEY] has the two-line string 
+ * "(claim.priorhospitalization, "prior hospitalization", "listed in $C$") \n (country.continent, "continent", "on which $X$ resides")",
+ *      In the first case proceduralTemplateArgs will be ['claim.priorhospitalization', '"prior hospitalization"', '"listed in $C$"'] and 
+ *      this will return new TemplateWrapper("claim.priorhospitalization(C,CA)", "$CA$ is the prior hospitalization listed in $C$", ["CA", "C"], 'attributeRelation_unique')
+ * 
+ *  
+ *      In the second case proceduralTemplateArgs will be ['country.continent', '"continent"', '"on which $X$ resides"'] and 
+ *      this will return new TemplateWrapper("country.continent(X,XA)", "$XA$ is the continent on which $X$ resides", ["XA", "X"], 'attributeRelation_unique')
+ * 
+ * 
+ * Paired with the replaceWithType option, these should appear in explanations as:
+ * "[the (ordinal) hospitalization] is the prior hospitalization listed in [the (ordinal2) country]"
+ * 
+ * [the (ordinal) continent] is the continent on which [the (ordinal2) country] resides
+ * 
+ * 
+ * We assume the attribute relation is unique so that when we say "the [englishAttributeName] of the [class instance replacementStr]" it is unambiguous what object we are referring to.
+*/
+function constructProceduralTemplate_attributeRelation_unique(proceduralTemplateArgs) {
+    let [attributeRelation, englishAttributeName, templateSuffix] = proceduralTemplateArgs;
+
+    //Trim the quotes off the args.
+    englishAttributeName = englishAttributeName.slice(1, -1);
+    templateSuffix = templateSuffix.slice(1, -1);
+
+    let varSeq = varSeqFromStr(templateSuffix);
+    if (varSeq.length !== 1) {
+        console.log("[Warning] constructProceduralTemplate_attributeRelation_unique - template suffix does not contain exactly one variable:",templateSuffix);
+        return false;
+    } 
+    
+    // Remove the $ symbols from the beginning and end.
+    varSeq[0] = varSeq[0].slice(1, -1);
+
+    const classInstanceVar = varSeq[0];
+    
+    // Create a variable that will match the attribute value and that we know was not used in the templateSuffix.
+    const attributeValueVar = classInstanceVar + 'A';
+
+    // Construct the template string.
+    const templateStr = ['$'+attributeValueVar+'$', 'is the', englishAttributeName, templateSuffix].join(' ');
+
+    // Update varSeq to reflect the final structure of the template string.
+    varSeq = [attributeValueVar].concat(varSeq);
+
+    // Assemble the attribute relation query goal
+    const queryGoal = attributeRelation + '(' + classInstanceVar + ',' + attributeValueVar + ')';
+
+    return new TemplateWrapper(queryGoal, templateStr, varSeq, 'attributeRelation_unique');
+}
+
+/* Parses input string for variables of the form $VAR$ and returns an array of the variables that appear in the string.
+ * Only variables that appear in the input varSet will be parsed from the input.
+ *      varSet is assumed to be a list of strings with no repeat elements.
+ * If varSet === 'all', all variables are matched.
+ * 
+ * The returned array will contain strings, will have the variables in the order they appear in the input, and will not have $ symbols surrounding the vars.
+ *
+ * e.g. if the input was "$C$ is the $X$ of $C$",
+ *      would return ['C', 'X', 'C']
+ */
+function varSeqFromStr(strWithVars, varSet = 'all') {
+    let varSequence = [];
+
+    // Match every variable.
+    if (varSet === 'all') {
+        // Does not match underscores. Weird bugs arose due to my not understanding exactly which underscores
+        // TODO: Match variables beginning with underscores
+        let re = new RegExp('\\$[A-Z]\\w*\\$', 'g');
+        varSequence = strWithVars.match(re);
+
+        // None found
+        if (varSequence === null) {
+            return [];
+        }
+        return varSequence;
+    }
+
+
+    // Match specified variables.
+    if (varSet.length !== 0) {
+        let re = new RegExp('\\$' + varSet.join('\\$|\\$') + '\\$', 'g');
+        varSequence = strWithVars.match(re);
+
+        if (varSequence === null) {
+            varSequence = [];
+        }
+
+        //Remove the '$' symbols
+        varSequence.forEach((matchedStr, index) => {
+            varSequence[index] = matchedStr.slice(1, matchedStr.length-1);
+        });
+    }
+
+    return varSequence;
+}
 
 //==============================================================================
 //==============================================================================

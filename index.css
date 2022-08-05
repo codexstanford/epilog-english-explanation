@@ -35,6 +35,13 @@ body {
     border-radius: 5px;
 }
 
+.horizontal_divider_fileUploading {
+    width: 800; 
+    border: 1px solid lightblue;
+
+    margin-bottom: 0;
+}
+
 #explanation {
     font-family: monospace;
     font-size:18px;

@@ -20,18 +20,343 @@
 //==============================================================================
 
 //==============================================================================
-// converting epilog to english
+// classes
+//==============================================================================
+//------------------------------------------------------------------------------
+// DerivationTree (class)
+// FactWrapper (class)
+//------------------------------------------------------------------------------
+
+// A tree representation of the derivation of a ground atom
+class DerivationTree {
+    // groundAtom: A list or string representing an Epilog ground atom.
+    constructor(groundAtom, facts, rules, metadata, english_templates, options) {
+        if (typeof(groundAtom) === "string") {
+            groundAtom = read(groundAtom);
+        }
+
+        this.root = new FactWrapper(groundAtom, facts, rules, metadata, english_templates, options);
+
+        // Whether the root fact should appear in the explanation.
+        this.visible = true;
+
+        this.children = [];
+
+        const explanation = explain(groundAtom, facts, rules);
+        
+        // There are no children.
+        if (typeof(explanation) === "string" ||
+            explanation[0] !== "rule" ||
+            explanation.length <= 2) {
+            return;
+        }
+        
+        
+        // Recursively construct derivations of the facts used to derive the root
+        for (let i = 2; i < explanation.length; i++) {
+            this.children.push(new DerivationTree(explanation[i], facts, rules, metadata, english_templates, options));
+        }
+        
+    }
+
+    // Recursively removes subtrees/facts from the tree such that the tree has the provided maximum depth.
+    // Removes all children if depth <= 0
+    pruneToDepth(depth) {
+        if (depth <= 0) {
+            this.children = [];
+            return;
+        }
+
+        for (let childTree of this.children) {
+            childTree.pruneToDepth(depth-1);
+        }
+
+        return this;
+    }
+
+    // Sets the visibility of the every node in the tree to be newVisibility.
+    // newVisibility should be a boolean.
+    setTreeVisibility(newVisibility) {
+        this.visible = newVisibility;
+
+        for (let child of this.children) {
+            child.setTreeVisibility(newVisibility);
+        }
+    }
+
+    // Returns an array of strings containing all symbols matched by vars in templates of facts in the tree.
+    // The facts in the tree are traversed in DFS order and symbols are added in the order they appear in template of the fact.
+    // If onlyVisible is true, only considers symbols in visible nodes.
+        // Should therefore be a subset of the keys of the symbolTypeMap for the tree.
+    getMatchedSymbolsInOrder(onlyVisible) {
+        let matchedSymbols = [];
+        
+        // If onlyVisible, only consider visible nodes.
+        if (!(onlyVisible && !this.visible)) {
+            for (let [varStr, replacementStr] of this.root.templateVarReplacementSeq) {
+                matchedSymbols.push(this.root.templateMatchedVars.get(varStr));
+            }
+        }
+
+        for (let child of this.children) {
+            matchedSymbols = matchedSymbols.concat(child.getMatchedSymbolsInOrder(onlyVisible));
+        }
+
+        return matchedSymbols;
+    }
+
+    // Returns an array of FactWrappers containing all facts in the tree with templates that matched the given symbol.
+    getFactsWithMatchedSymbol(matchedSymbol) {
+        let factsWithSymbol = [];
+
+        for (let [varStr, replacementStr] of this.root.templateVarReplacementSeq) {
+            if (this.root.templateMatchedVars.get(varStr) === matchedSymbol) {
+                factsWithSymbol.push(this.root);
+            }
+        }
+
+        for (let child of this.children) {
+            factsWithSymbol = factsWithSymbol.concat(child.getFactsWithMatchedSymbol(matchedSymbol));
+        }
+
+        return factsWithSymbol;
+    }
+
+    // Converts the DerivationTree into a nested list of FactWrappers. The Tree is traversed in DFS order.
+    // depth: the maximum DFS traversal depth
+        // If depth <= -1, the whole Tree is traversed.
+    // Each subtree is represented as [root, [children]]
+    toList(depth = 1) {
+        if (depth === 0 || this.children.length === 0) {
+            return [this.root, []];
+        }
+
+        let nextDepth = depth -1;
+
+        // Traverse the whole tree
+        if (depth <= -1) {
+            nextDepth = -1;
+        }
+
+        let factList = [];
+
+        factList.push(this.root);
+
+        let childList = [];
+
+        for (let i = 0; i < this.children.length; i++) {
+            childList.push(this.children[i].toList(nextDepth));
+        }
+
+        factList.push(childList);
+
+        return factList;
+    }
+
+    // Converts a DerivationTree or a nested list of FactWrappers into a 1D list in DFS order. 
+    // Returns the 1D list.
+    static asFlatList(treeOrList) {
+        if (!((treeOrList instanceof DerivationTree) || Array.isArray(treeOrList))) {
+            console.log("[Warning] DerivationTree.flatList - argument must be a DerivationTree of a list.");
+            return treeOrList;
+        }
+
+        let nestedList;
+        if (treeOrList instanceof DerivationTree) {
+            // By default converts the entire tree.
+            nestedList = treeOrList.toList(-1);
+        }
+        
+        return nestedList.flat(Infinity);
+    }
+
+    // Applies a symbolReplacementMap to the templateVarReplacementSeq's in the visible nodes of the derivTree.
+    static applySymbolReplacementMap(derivTree, symbolToReplacementMap) {
+        let queue = [derivTree];
+        while (queue.length !== 0) {
+            //Remove from queue and add children
+            let subtree = queue.shift();
+            queue = queue.concat(subtree.children);
+            
+            // If not visible, ignore subtree.
+            if (!subtree.visible) {
+                continue;
+            }
+
+            // Update the templateVarReplacementSeq for the current node.
+            let updatedReplacementSeq = subtree.root.templateVarReplacementSeq;
+            for (let i = 0; i < updatedReplacementSeq.length; i++) {
+                let matchedSymbol = subtree.root.templateMatchedVars.get(updatedReplacementSeq[i][0]);
+                
+                // Ignore untyped symbols.
+                if (!symbolToReplacementMap.has(matchedSymbol)) {
+                    continue;
+                }
+
+                updatedReplacementSeq[i][1] = symbolToReplacementMap.get(matchedSymbol);
+            }
+
+            subtree.root.templateVarReplacementSeq = updatedReplacementSeq;
+        }
+        return derivTree;
+    }
+}
+
+// A wrapper class for Epilog facts to simplify converting to templates. 
+class FactWrapper {
+    // groundAtom: A list or string representing an Epilog ground atom.
+    constructor(groundAtom, facts, rules, metadata, english_templates, options) {
+        //Convert to list format
+        if (typeof(groundAtom) === 'string') {
+            groundAtom = read(groundAtom);
+        }
+        this.groundAtom = groundAtom;
+        
+        //Find matching template, if it exists
+        let proceduralTemplateType = "";
+        [this.unfilledTemplate, this.templateMatchedVars, this.templateVarReplacementSeq, proceduralTemplateType] = getMatchingTemplate(this.groundAtom, english_templates);
+
+        if (this.unfilledTemplate === false) {
+            this.unfilledTemplate = grind(this.groundAtom);
+        }
+
+        // validate that, if a procedural template is being used, it is being applied appropriately to the fact.
+            // All construction of the fact should be finished before performing this check.
+        switch (proceduralTemplateType) {
+            case 'none':
+                break;
+
+            case 'attributeRelation_unique':
+                let relation = this.getPredicateSymbol();
+                if (!isAttributeRelation(relation, facts, rules, metadata, options)) {
+                    console.log("[Warning] FactWrapper constructor - procedural template of type attributeRelation_unique has matched a non-attribute relation fact.");
+                    break;
+                }
+
+                let classInstance = this.getClassInstanceIfAttribute(facts, rules, metadata, options);
+
+                if (!isUniqueAttributeForInstance(relation, classInstance, facts, rules, metadata, options)) {
+                    console.log("[Warning] FactWrapper constructor - procedural template of type attributeRelation_unique has matched an attribute that \
+                                 is not unique for the class instance:", this.asString());
+                    break;
+                }
+
+                break;
+            default:
+                break;
+        }
+    }
+
+    asList() {
+        return this.groundAtom;
+    }
+
+    asString() {
+        return grind(this.groundAtom);
+    }
+
+    // Returns the string of the groundAtom's predicate if it exists.
+    // If not, returns false.
+    getPredicateSymbol() {
+        const listAtom = this.asList();
+        if (symbolp(listAtom)) {
+            return false;
+        }
+
+        if (listAtom[0] === 'rule') {
+            return listAtom[1][0];
+        }
+
+        return listAtom[0];
+    }
+
+    // Returns a Set of strings of the groundAtom's non-predicate symbols, if they exist.
+    // If none found, returns an empty Set.
+    getNonPredicateSymbols() {
+        const listAtom = this.asList();
+        
+        if (symbolp(listAtom)) {
+            return new Set([listAtom]);
+        }
+
+        let symbolList = [];
+
+        // Exclude the predicate and 'rule'
+        let queue = listAtom.slice(1);
+        let elem;
+
+        while ((typeof(elem = queue.shift()) !== 'undefined')) {
+            if (symbolp(elem)) {
+                symbolList.push(elem);
+            } else 
+            // Add elems to the queue, excluding predicates and 'rule'
+            if (Array.isArray(elem)) {
+                queue = queue.concat(elem.slice(1));
+            }
+        }
+
+        return new Set(symbolList);
+
+    }
+
+    // If an attribute relation fact, returns a string containing the value of the attribute.
+    // If not an attribute relation fact, returns false.
+    getValueIfAttribute(facts, rules, metadata, options) {
+        if (!isAttributeRelation(this.getPredicateSymbol(), facts, rules, metadata, options)) {
+            return false;
+        }
+
+        let listAtom = this.asList();
+        let attributeValue = listAtom[listAtom.length - 1];
+        if (typeof attributeValue !== "string") {
+            attributeValue = grind(attributeValue);
+        }
+
+        return attributeValue;
+
+    }
+
+    // If an attribute relation fact, returns a string containing the class instance of the attribute. (I.e. the first argument)
+    // If not an attribute relation fact, returns false.
+    getClassInstanceIfAttribute(facts, rules, metadata, options) {
+        if (!isAttributeRelation(this.getPredicateSymbol(), facts, rules, metadata, options)) {
+            return false;
+        }
+
+        let listAtom = this.asList();
+        let classInstance = listAtom[listAtom.length - 2];
+        if (typeof classInstance !== "string") {
+            classInstance = grind(classInstance);
+        }
+
+        return classInstance;
+    }
+
+    //Returns the unfilledTemplate with vars replaced as specified by the templateVarReplacementSeq
+    getFilledTemplate() {
+        let strToFill = stripquotes(this.unfilledTemplate);
+
+        for (let i=0; i<this.templateVarReplacementSeq.length; i++) {
+            const replacementPair = this.templateVarReplacementSeq[i];
+            let re = new RegExp('\\$' + replacementPair[0] + '\\$','i');
+
+            strToFill = strToFill.replace(re,replacementPair[1]);
+        }
+
+        return strToFill;
+    }
+}
+
+//==============================================================================
+// High-level natural language generation
 //==============================================================================
 //------------------------------------------------------------------------------
 // toEnglish
-// DerivationTree (class)
-// FactWrapper (class)
-// getMatchingTemplate
-// derivationToExplanationFactList
-// constructSymbolTypeMap
-// replaceSymbolsWithTypes
+// pruneDerivTree
+// performTreeVisibilityPasses
+// performSymbolReplacementPasses
+// derivTreeToEnglish
 //------------------------------------------------------------------------------
-
 
 /* Returns a string of the English explanation of the conclusion based on 
  * the given facts, rules, metadata, english_templates, and options.
@@ -55,146 +380,193 @@
  *      linkGivenFacts:  whether facts that are not derivable and are given as true should be hyperlinked as above. No effect if linkFromExplanation is false.
  * 
  */
-//
 function toEnglish(conclusion,
                    facts,
                    rules,
                    metadata,
                    english_templates, 
-                   options = {typePredicate: "type", replaceWithType: true, removeClassAttributes: true, bindLocalConstants: false, verifyDerivable: true, useMetadata: true, linkFromExplanation: true, linkGivenFacts: true }) {
+                   options = {typePredicate: "type", replaceWithType: true, removeClassAttributes: false, bindLocalConstants: true, verifyDerivable: true, useMetadata: true, linkFromExplanation: true, linkGivenFacts: true }) {
 
-    //Note: If replaceWithType is false, bindLocalConstants is irrelevant
-    //Note: if linkFromExplanation is false, linkGivenFacts is irrelevant
+    // Note: If replaceWithType is false, bindLocalConstants is irrelevant
+    // Note: if linkFromExplanation is false, linkGivenFacts is irrelevant
     
-    //Check whether the conclusion is true before translating
+    // Check whether the conclusion is true before translating
     if (options.verifyDerivable && !isDerivableFact(conclusion, facts, rules)) {
         console.log("[Warning] toEnglish -", conclusion, "is not derivable from the given facts and rules.");
         return conclusion + " is not derivable from the given facts and rules.";
     }
 
-    let derivTree = new DerivationTree(conclusion, facts, rules, metadata, english_templates);
-    
-    //Generate list of FactWrappers that will comprise the explanation, parameterized by the metadata and the options.
-    let explanationFactList = derivationToExplanationFactList(derivTree, facts, rules, metadata, english_templates, options);
-    
-    if (options.replaceWithType) {
-        explanationFactList = replaceSymbolsWithTypes(explanationFactList, derivTree, facts, rules, metadata, options);
-    }
-    
+    // Generate the DerivationTree for the given conclusion. This is a complete representation of the derivation.
+    let derivTree = new DerivationTree(conclusion, facts, rules, metadata, english_templates, options);
 
-    //Generate text from the list of facts and their templates.
-    let englishExplanation = factListToEnglish(explanationFactList, facts, rules, metadata, english_templates, options);
+    // Remove subtrees/facts that will not be taken into account for the explanation.
+    derivTree = pruneDerivTree(derivTree, options);
     
+    // Set visible to false for subtrees/facts that will not appear in the explanation, 
+        // but the information of which we still want to take into account when constructing the explanation.
+    derivTree = performTreeVisibilityPasses(derivTree, facts, rules, metadata, options);
+
+
+    // Perform all passes replacing matched symbols in templates.
+    derivTree = performSymbolReplacementPasses(derivTree, facts, rules, metadata, options);
+
+    //console.log(derivTree);
+
+    let englishExplanation = derivTreeToEnglish(derivTree, facts, rules, metadata, english_templates, options);
+
     return englishExplanation;
 }
 
-// A tree representation of the derivation of a ground atom
-class DerivationTree {
-    // groundAtom: A list or string representing an Epilog ground atom.
-    constructor(groundAtom, facts, rules, metadata, english_templates) {
-        if (typeof(groundAtom) === "string") {
-            groundAtom = read(groundAtom);
-        }
-
-        this.root = new FactWrapper(groundAtom, english_templates);
-
-        this.children = [];
-
-        const explanation = explain(groundAtom, facts, rules);
-        
-        //There are no children.
-        if (typeof(explanation) === "string" ||
-            explanation[0] !== "rule" ||
-            explanation.length <= 2) {
-            return;
-        }
-        
-        
-        //Recursively construct derivations of the facts used to derive the root
-        for (let i = 2; i < explanation.length; i++) {
-            this.children.push(new DerivationTree(explanation[i], facts, rules, metadata, english_templates));
-        }
-        
-    }
+/* Removes subtrees/facts from a DerivationTree so that they are not taken into account in an explanation.
+ * Removing the root of a subtree removes the entire subtree.
+ *
+ * The tree is modified in-place.
+ * 
+ * Returns the pruned DerivationTree.
+ */
+function pruneDerivTree(derivTree, options) {
+    // For now, just sets a prunes to a depth of 1.
+    return derivTree.pruneToDepth(1);
 }
 
-// A wrapper class for Epilog facts to simplify converting to templates. 
-class FactWrapper {
-    // groundAtom: A list or string representing an Epilog ground atom.
-    constructor(groundAtom, english_templates) {
-        //Convert to list format
-        if (typeof(groundAtom) === 'string') {
-            groundAtom = read(groundAtom);
+/* Sets visible to false for subtrees/facts that want not to appear in the explanation, 
+ * but the information of which we still want to take into account.
+ *
+ * Paramaterized by the options.
+ * 
+ * Modifies the derivTree in-place.
+ * 
+ * Returns the updated derivTree.
+ */
+function performTreeVisibilityPasses(derivTree, facts, rules, metadata, options) {
+
+    // For now, if a root is not visible, then every node in its subtree is not visible.
+
+    // Hide attribute relation facts under the following conditions:
+    //      - the range of the attribute is unique (for the class instance in the fact)
+    //      - the class instance has no other attributes with the same range
+    //      - the attribute value is the only symbol of its type in the explanation 
+    //
+    //      Should add additional restrictions so that attribute facts are not removed when their removal would make the explanation ambiguous (or remove all facts),
+    //          but the exact conditions are more complex than I would like. Tried the below, but this was overly restrictive.
+    //          For now, will rely on the user to decide whether to removeClassAttributes or not.
+    //          (E.g. The current conditions work well for plan_in_effect, but remove all explanation facts in same_continent.)
+    //      Attempted additional condition:
+    //      - the attribute value appears in at least one non-attribute fact in the explanation
+    //          - Just appearing as a non-attribute value is not enough, as it could still be hidden if it only appears in attribute facts and its attributes are hidden.
+    if (options.removeClassAttributes) {
+        let symbolTypeMap = constructSymbolTypeMap(derivTree, facts, rules, options);
+
+        // The initial root should always be visible.
+        let queue = [...derivTree.children];
+
+        // For each subtree in queue
+        while (queue.length !== 0) {
+            let subtree = queue.shift();
+            
+            // Ignore subtrees with an invisible root.
+            if (!subtree.visible) {
+                continue;
+            }
+
+            let predicateSymbol = subtree.root.getPredicateSymbol();
+            let classInstance = subtree.root.getClassInstanceIfAttribute(facts, rules, metadata, options);
+
+            if (isAttributeRelation(predicateSymbol, facts, rules, metadata, options) && 
+                isUniqueAttributeForInstance(predicateSymbol, classInstance, facts, rules, metadata, options) &&
+                isOnlyAttributeOfTypeForInstance(predicateSymbol, classInstance, facts, rules, metadata, options)) {
+                    
+                    let valType = getRangeOfAttribute(predicateSymbol, facts, rules, metadata, options);
+
+                    let appearsInNonAttributeFact = true;
+                    /*let val = subtree.root.getValueIfAttribute(facts, rules, metadata, options);
+                    let factsWithMatchedSymbol = derivTree.getFactsWithMatchedSymbol(val);
+
+
+                    let appearsInNonAttributeFact = false;
+                    for (let fact of factsWithMatchedSymbol) {
+                        // Don't count the conclusion
+                        if (fact !== derivTree.root && !isAttributeRelation(fact.getPredicateSymbol(), facts, rules, metadata, options)) {
+                            appearsInNonAttributeFact = true;
+                            break;
+                        }
+                    }
+
+                    console.log("appears in other fact:",val,appearsInNonAttributeFact,factsWithMatchedSymbol);*/
+
+                    // Verify that this value is the only object of its type in the explanation.
+                    // If so, hide this subtree and ignore its children.
+                    if (appearsInNonAttributeFact && [...symbolTypeMap.keys()].filter(key => symbolTypeMap.get(key) === valType).length === 1) {
+                        subtree.setTreeVisibility(false);
+                        continue;
+                    }
+
+            }
+
+            queue.concat(subtree.children);
         }
-        this.groundAtom = groundAtom;
-        
-        //Find matching template, if it exists
-        [this.unfilledTemplate, this.templateMatchedVars, this.templateVarReplacementSeq] = getMatchingTemplate(this.groundAtom, english_templates);;
     }
 
-    asList() {
-        return this.groundAtom;
-    }
-
-    asString() {
-        return grind(this.groundAtom);
-    }
-
-    // Returns the string of the groundAtom's predicate if it exists.
-    // If not, teturns the groundAtom itself (which will be a string).
-    getPredicateSymbol() {
-        const listAtom = this.asList();
-        if (symbolp(listAtom)) {
-            return listAtom;
-        }
-
-        if (listAtom[0] === 'rule') {
-            return listAtom[1][0];
-        }
-
-        return listAtom[0];
-    }
-
-    //Returns the unfilledTemplate with vars replace as specified by templateVarReplacementSeq
-    getFilledTemplate() {
-        let strToFill = stripquotes(this.unfilledTemplate);
-
-        for (let i=0; i<this.templateVarReplacementSeq.length; i++) {
-            const replacementPair = this.templateVarReplacementSeq[i];
-            let re = new RegExp('\\$' + replacementPair[0] + '\\$','i');
-
-            strToFill = strToFill.replace(re,replacementPair[1]);
-        }
-
-        return strToFill;
-    }
+    //console.log("setvisibilitytree",derivTree);
+    return derivTree;
 }
 
-/* Fills the templates of the facts in factList to generate an English explanation.
-
-*/
-function factListToEnglish(factList, facts, rules, metadata, english_templates, options) {
-    if (factList.length === 0) {
-        return "";
+/* Performs passes to update the templateVarReplacementSeq properties of the facts in the derivTree.
+ * options controls which passes are performed.
+ * 
+ * 
+ * Modifies the DerivationTree in-place.
+ */
+function performSymbolReplacementPasses(derivTree, facts, rules, metadata, options) {
+    if (options.replaceWithType) {
+        // Replace object symbols with "the [type]" as a baseline.
+        [derivTree, symbolToReplacementMap] = replaceSymbolsWithTypes(derivTree, facts, rules, metadata, options);
+        
+        // Rare/niche pass!
+            // Replaces the first instance of a given class attribute with "the [attribute range] of the [attribute domain]",
+            // but only if it is the only symbol in the explanation of its type and it appears as a value in an attribute fact that is not visible.
+        if (options.bindLocalConstants) {
+            derivTree = bindClassAttributeSymbols(derivTree, symbolToReplacementMap, facts, rules, metadata, options);
+        }
     }
+
+    return derivTree;
+}
+
+/* Combines and fills the templates of the facts of the derivTree to generate an natural language explanation.
+ * 
+ * For now, only handle the case where the derivTree has depth 1.
+ * It seems we'll be keeping trees of depth 1 for the foreseeable future, since the simplicity this affords is extremely beneficial for testing NLG of explanations.
+ * Maybe move the above note to Obsidian. (8/1/2022)
+ */
+function derivTreeToEnglish(derivTree, facts, rules, metadata, english_templates, options) {
 
     //Treat the conclusion differently
-    let englishExplanation = factList[0].getFilledTemplate();
+    let englishExplanation = derivTree.root.getFilledTemplate();
 
-    if (factList.length === 1) {
+    // No further explanation is required/available.
+        // Note that this condition can be met if the tree was pruned to depth 0.
+    if (derivTree.children.length === 0) {
         return "It is given that " + englishExplanation;
     }
 
-    //Process any child facts
+
+    // Process any child facts
     englishExplanation += " because \n \t";
     let childExplanationList = [];
-    for (let i = 1; i < factList.length; i++) {
-        let childExplanation = factList[i].getFilledTemplate();
-        //If linkFromExplanation, generate a link to a page for each fact in the explanation
+
+    for (let child of derivTree.children) {
+        if (!child.visible) {
+            continue;
+        }
+
+        let childExplanation = child.root.getFilledTemplate();
+
+        //If linkFromExplanation, generate a link to an explanation for each fact in the explanation.
         if (options.linkFromExplanation) {
             //If linkGivenFacts is false, don't link facts without children. (i.e. those that don't have derivations, and are simply given as true)
-            if (options.linkGivenFacts || (new DerivationTree(factList[i].asList(), facts, rules, metadata, english_templates).children.length > 0) ) {
-                childExplanation = factLinkElem(factList[i], childExplanation);
+            if (options.linkGivenFacts || (new DerivationTree(child.root.asString(), facts, rules, metadata, english_templates, options)).children.length > 0) {
+                childExplanation = factLinkElem(child.root, childExplanation);
             }
         }
         childExplanationList.push(childExplanation);
@@ -203,6 +575,253 @@ function factListToEnglish(factList, facts, rules, metadata, english_templates, 
     englishExplanation += childExplanationList.join(" and \n \t");
     return englishExplanation;
 }
+
+//==============================================================================
+// Symbol replacement passes
+//==============================================================================
+//------------------------------------------------------------------------------
+//--------------------------- Type Replacement ---------------------------------
+// replaceSymbolsWithTypes
+// 
+// bindClassAttributeSymbols
+//------------------------------------------------------------------------------
+
+/* Returns a DerivationTree where the varReplacementSeq of each fact is updated  
+ * such that each symbol is replaced with its type as "the [type]", as long as it is the only symbol of its type in the explanation.
+ *
+ * The derivTree is modified in-place.
+ */
+function replaceSymbolsWithTypes(derivTree, facts, rules, metadata, options) {
+    if (!derivTree instanceof DerivationTree) {
+        console.log("[Warning] replaceSymbolsWithTypes - first argument must be a DerivationTree.");
+        return derivTree;
+    }
+    
+    // Make a map of each type to an ordered sequence of the symbols of that type in the explanation.
+    let typeToSymbolsMap = constructTypeToOrderedSymbolsMap(derivTree, facts, rules, options);
+
+    // Make a map of each symbol to its replacement string.
+    // Ignores untyped symbols.
+    let symbolToTypeReplacementMap = new Map();
+
+    for (const [symbolType, symbolsOfType] of typeToSymbolsMap) {
+        const numSymbolsOfType = symbolsOfType.length;
+
+        // For each symbol, replace it with...
+            // "the [type]" if it is the only symbol of its type in the explanation.
+            // "the (ordinal) [type]" otherwise.
+        // This should work reasonably well as-is. The primary future improvement will be varying the determiner used before the type.
+        for (let i = 0; i<numSymbolsOfType; i++) {
+            const symbol = symbolsOfType[i];
+            const symbolTypeStr = symbolType;
+
+            // No ordinal necessary if only symbol of type in the explanation.
+            if (numSymbolsOfType === 1) {
+                symbolToTypeReplacementMap.set(symbol, "the " + symbolTypeStr);
+                continue;
+            }
+
+            symbolToTypeReplacementMap.set(symbol, "the " + ordinalNumeralFor(i+1) + " " + symbolTypeStr);
+        }
+    }
+
+    //console.log("replacementmap",symbolToTypeReplacementMap);
+
+    // Apply these replacements to the templateVarReplacementSeq's in the visible nodes of the derivTree.
+    derivTree = DerivationTree.applySymbolReplacementMap(derivTree, symbolToTypeReplacementMap, -1);
+
+    //console.log("subbed derivTree",derivTree);
+
+    return [derivTree, symbolToTypeReplacementMap];
+}
+
+/* Returns a DerivationTree where...
+ *          - if a symbol is an attribute value,
+ *          - and the attribute relation fact where it is specified is not visible,
+ *              - then the first occurrence of that symbol is replaced with "the [attribute range] of the [attribute domain]"
+ *
+ * Only perform the replacement if the attribute relation is typed, unique, it is the only attribute relation of the class with that range,
+ * and the value is the only object in the explanation of its type.
+ * 
+ * symbolToReplacementMap is used to find how the class instance with the attribute is referred.
+ * 
+ * The derivTree is modified in-place.
+ * 
+ * This pass is performed only in very specific situations, so okay with the implementation details being dependent on the specifics of hiding attribute relation facts,
+ * especially since it there are *many* conditions that must be met in order to perform this substitution and keeping those synced between 
+ * two functions would be bug-prone.
+ */
+function bindClassAttributeSymbols(derivTree, symbolToReplacementMap, facts, rules, metadata, options) {
+    
+    // Find all attribute facts in the derivTree that are not visible and build their new replacement strings.
+    let symbolToBoundReplacementMap = new Map();
+
+    // Set the bound replacement str for the values that meet the conditions.
+    let queue = [derivTree];
+    while (queue.length !== 0) {
+        // Update the queue
+        let subtree = queue.shift();
+        queue = queue.concat(subtree.children);
+
+        let relation = subtree.root.getPredicateSymbol();
+
+        if (!subtree.visible && 
+            isAttributeRelation(relation, facts, rules, metadata, options)) {
+
+            // Only consider the first class instance that has val as an attribute value.
+            let val = subtree.root.getValueIfAttribute(facts, rules, metadata, options);
+            if (symbolToBoundReplacementMap.has(val)) {
+                continue;
+            }
+
+            let valType = getSymbolType(val, facts, rules, options.typePredicate);
+            let classInstance = subtree.root.getClassInstanceIfAttribute(facts, rules, metadata, options);
+
+            let boundReplacementStr = "the " + valType + " of ";
+            if (symbolToReplacementMap.has(classInstance)) {
+                boundReplacementStr += symbolToReplacementMap.get(classInstance);
+            } else {
+                boundReplacementStr += classInstance;
+            }
+
+            symbolToBoundReplacementMap.set(val, boundReplacementStr);
+        }
+    }
+
+    //console.log("boundmap",[...symbolToBoundReplacementMap.entries()])
+    
+    // Update the templateVarReplacementSeq for the initial occurrence of each symbol in the bound replacement map.
+    let substitutionQueue = [derivTree]; 
+
+    while (substitutionQueue.length !== 0 && symbolToBoundReplacementMap.size !== 0) {
+        let subtree = substitutionQueue.shift();
+        substitutionQueue = substitutionQueue.concat(subtree.children);
+
+        if (!subtree.visible) {
+            continue;
+        }
+
+        // Update the templateVarReplacementSeq for the current node.
+        let updatedReplacementSeq = subtree.root.templateVarReplacementSeq;
+        for (let i = 0; i < updatedReplacementSeq.length; i++) {
+            let matchedSymbol = subtree.root.templateMatchedVars.get(updatedReplacementSeq[i][0]);
+            
+            // Ignore unbound and repeat symbols.
+            if (!symbolToBoundReplacementMap.has(matchedSymbol)) {
+                continue;
+            }
+
+            updatedReplacementSeq[i][1] = symbolToBoundReplacementMap.get(matchedSymbol);
+
+            // Only apply the replacement once, so remove from the map.
+            symbolToBoundReplacementMap.delete(matchedSymbol);
+        }
+
+        subtree.root.templateVarReplacementSeq = updatedReplacementSeq;
+    }
+    
+
+    //console.log("Bound derivTree", derivTree);
+    return derivTree;
+}
+
+//==============================================================================
+// Helpers for type replacement passes
+//==============================================================================
+//------------------------------------------------------------------------------
+// constructSymbolTypeMap
+// constructTypeToOrderedSymbolsMap
+//------------------------------------------------------------------------------
+
+
+/* Returns a map where each...
+ *      - key is a symbol that matched a var in a template of a fact in the derivTree
+ *      - value is the type of the symbol, either a string, or false if the symbol has no type
+ */
+function constructSymbolTypeMap(derivTree, facts, rules, options) {
+    if (!derivTree instanceof DerivationTree) {
+        console.log("[Warning] constructSymbolTypeMap - first argument must be a DerivationTRee.");
+        return new Map();
+    }
+
+    let symbolTypeMap = new Map();
+
+    let queue = [derivTree];
+    
+    while (queue.length !== 0) {
+        let subtree = queue.shift();
+
+        // Add each new symbol (which matched a template variable) and its type to the map
+        for (const symbol of subtree.root.templateMatchedVars.values()) {
+            if (symbolTypeMap.has(symbol)) {
+                continue;
+            }
+
+            symbolTypeMap.set(symbol, getSymbolType(symbol, facts, rules, options.typePredicate));
+        }
+
+
+        if (subtree.children.length !== 0) {
+            queue = queue.concat(subtree.children);
+        }
+    }
+
+    return symbolTypeMap;
+}
+
+/* Returns a map where...
+ *      - key is a string representing a type in the facts database
+ *      - value is an array of distinct symbols in the explanation with that type.
+ *
+ * The symbols will appear in their array in the order they appear in visibleSymbolsInOrder.
+ *      (And therefore we only consider symbols in visible subtrees)
+ * The array will contain no duplicate elements (like a Set) but is an array to retain ordering.
+ */
+function constructTypeToOrderedSymbolsMap(derivTree, facts, rules, options) {
+    // Get all symbols that will appear in the explanation which matched vars in templates.
+        // Should therefore be a subset of the keys of the symbolTypeMap for the tree.
+    let visibleSymbolsInOrder = derivTree.getMatchedSymbolsInOrder(true);
+
+    // Make a map from each type to an array of distinct symbols in the explanation with that type.
+        // The symbols will appear in their array in the order they appear in visibleSymbolsInOrder.
+        // The array will contain no duplicate elements (like a Set) but is kept an array for the ordering.
+    let typeToSymbolsMap = new Map();
+    for (const symbol of new Set(visibleSymbolsInOrder)) {
+    
+        const symbolType = getSymbolType(symbol, facts, rules, options.typePredicate);
+
+        // Ignore untyped symbols.
+        if (symbolType === false) {
+            continue;
+        }
+
+        // First symbol seen of type.
+        if (!typeToSymbolsMap.has(symbolType)) {
+            typeToSymbolsMap.set(symbolType, [symbol]);
+            continue
+        }
+
+        let seenSymbols = typeToSymbolsMap.get(symbolType);
+
+        // Ignore repeat.
+        if ((new Set(seenSymbols)).has(symbol)) {
+            continue;
+        }
+
+        // Is a new symbol of the type, so add to the end of the array.
+        typeToSymbolsMap.set(symbolType, seenSymbols.concat([symbol]));        
+    }
+
+    return typeToSymbolsMap;
+}
+
+//==============================================================================
+// Natural language generation utilities
+//==============================================================================
+//------------------------------------------------------------------------------
+// getMatchingTemplate
+// factLinkElem
+//------------------------------------------------------------------------------
 
 /* Finds and returns the first template matching the ground atom.
  * groundAtom: A string or list representing an Epilog ground atom
@@ -235,11 +854,9 @@ function getMatchingTemplate(groundAtom, english_templates) {
         groundAtom = read(groundAtom);
     }
 
-
-
     //Find the matching template
     for (let i=0; i < english_templates.length; i++) {
-        let matchedVars = simplematcher(english_templates[i].queryAsList(), groundAtom);
+        let matchedVars = simplematcher(english_templates[i].getQueryAsList(), groundAtom);
         
         //Matching template found
         if (matchedVars !== false) {
@@ -250,144 +867,18 @@ function getMatchingTemplate(groundAtom, english_templates) {
                 varReplacementSeq.push([varStr, matchedVarMap.get(varStr)]);
             });
 
-            return [matchedTemplate.templateString, matchedVarMap, varReplacementSeq];            
+            return [matchedTemplate.templateString, matchedVarMap, varReplacementSeq, matchedTemplate.proceduralType];
         }
     }
 
     //No matching template
-    return [grind(groundAtom), new Map(), []];
+    return [false, new Map(), []];
     
-}
-
-/* Converts a DerivationTree into an array of FactWrappers that will comprise an explanation,
- * parameterized by the metadata and the options.
- *
- */
-function derivationToExplanationFactList(derivTree, facts, rules, metadata, english_templates, options) {
-    let factList = [];
-
-    if (! derivTree instanceof DerivationTree ) {
-        console.log("[Warning] derivationToExplanationFactList - first argument must be a DerivationTree.");
-        return factList;
-    }
-
-    // Make a list of all facts that should be used in the explanation.
-    // Currently, just the root and its direct children.
-    factList.push(derivTree.root);
-    for (let i = 0; i < derivTree.children.length; i++) {
-        factList.push(derivTree.children[i].root);
-    }
-
-    for (let i = factList.length - 1; i >= 1; i--) {
-        // Remove facts that are class attributes of constants in the conclusion, based on metadata, if available.
-        if (options.removeClassAttributes) {
-            for (let [varStr, symbolStr] of factList[0].templateMatchedVars.entries()) {
-                const symbolType = getSymbolType(symbolStr, facts, rules, options.typePredicate);
-                if (isClass(symbolType, facts, rules, metadata, options) && 
-                    isAttributeOfClass( factList[i].getPredicateSymbol(), 
-                                        symbolType,
-                                        facts, rules, metadata, options)) {
-                    factList.splice(i, 1);
-                }
-            }
-        }
-    }
-
-    return factList;
-}
-
-/* Returns a map where each...
- *      - key is a symbol that matched a var in a template of a fact in the derivTree
- *      - value is an array containing [the type of the symbol, the relation where it first appeared in the derivation]
- * 
- * 
- * Note: Need derivTree instead of factList to properly bind attributes to their classes.
- */
-function constructSymbolTypeMap(derivTree, partialTypeMap, facts, rules, options) {
-    if (! derivTree instanceof DerivationTree) {
-        console.log("[Warning] constructSymbolTypeMap - first argument must be a DerivationTree.");
-        return partialTypeMap;
-    }
-
-    
-
-    // Get the types of each symbol that matched a var in the root.
-    for (let [varStr, symbolStr] of derivTree.root.templateMatchedVars.entries()) {
-        const symbolType = getSymbolType(symbolStr, facts, rules, options.typePredicate);
-
-        if (symbolType !== false && !partialTypeMap.has(symbolStr)) {
-            // Get the relation of the fact where the symbol was first introduced
-            const relation = derivTree.root.getPredicateSymbol();
-            partialTypeMap.set(symbolStr, [symbolType, relation]);
-        }
-    }
-
-    // Recursively get the types of the symbols that matched vars in the children
-    for (let i = 0; i < derivTree.children.length; i++) {
-        partialTypeMap = constructSymbolTypeMap(derivTree.children[i], partialTypeMap, facts, rules, options);
-    }
-
-    return partialTypeMap;
-}
-
-/* Returns a factList where the varReplacementSeq of each fact is updated  
- * such that each symbol is replaced with its type as "the [type]".
- * If bindLocalConstants, the first instance of a symbol that is a class attribute is 
- * replaced with "the [attribute] of the [class]".
- *
- * factList is modified in-place.
- * 
-*/
-function replaceSymbolsWithTypes(factList, derivTree, facts, rules, metadata, options) {
-    let symbolTypeMap = constructSymbolTypeMap(derivTree, new Map(), facts, rules, options);
-    
-    
-    let updatedFactList = [];
-    
-    if (!Array.isArray(factList)) {
-        console.log("[Warning] constructSymbolTypeMap - first argument must be an array of FactWrappers.");
-        return updatedFactList;
-    }
-
-
-    // Replace each symbol with its type as "the [type]"
-    // If bindLocalConstants, the first instance of a symbol that is a class attribute is 
-    // replaced with "the [attribute] of the [class]".
-    for (const [symbol, [type, bindingRelation]] of symbolTypeMap) {
-        let seenSymbol = false;
-        const boundInAttribute = isAttributeRelation(bindingRelation, facts, rules, metadata, options);
-        let classOfAttribute = "";
-        if (boundInAttribute) {
-            classOfAttribute = getClassOfAttribute(bindingRelation, facts, rules, metadata, options)
-        }
-        for (let i = 0; i < factList.length; i++) {
-            let fact = factList[i];
-            for (let k = 0; k < fact.templateVarReplacementSeq.length; k++) {
-                let [varStr, replacementStr] = fact.templateVarReplacementSeq[k];
-                
-                // Found an instance of the symbol in the explanation
-                if (fact.templateMatchedVars.get(varStr) === symbol) {
-                    let newReplacementStr = "the " + type;
-
-                    // Verify that the symbol was bound in a relation class.attribute and isn't of type class
-                    if (options.bindLocalConstants && !seenSymbol && boundInAttribute & classOfAttribute !== type) {
-                        newReplacementStr += " of the " + getClassOfAttribute(bindingRelation, facts, rules, metadata, options);
-                    }
-
-                    //Update the replacement string in-place
-                    factList[i].templateVarReplacementSeq[k] = [varStr, newReplacementStr];
-                    seenSymbol = true;
-                }
-            }
-        }
-    }
-
-    return factList;
 }
 
 // Return an HTML element linking to the page explaining the given fact, 
-// with text equal to linkText
-function factLinkElem (fact, linkText){
+// with text equal to linkText.
+function factLinkElem(fact, linkText){
     if (! fact instanceof FactWrapper) {
         const errorMsg = "[Warning] factLinkElem - first arg must be a FactWrapper.";
         console.log(errorMsg);
