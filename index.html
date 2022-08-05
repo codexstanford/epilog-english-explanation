@@ -1178,15 +1178,6 @@
         type(south_america,continent)
         type(oceania,continent)
 
-        adjacent_continent(africa,europe)
-        adjacent_continent(europe,africa)
-        adjacent_continent(europe,asia)
-        adjacent_continent(asia,europe)
-        adjacent_continent(asia,africa)
-        adjacent_continent(africa,asia)
-        adjacent_continent(north_america,south_america)
-        adjacent_continent(south_america,north_america)
-
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%% date
         %%% YYYY_MM_DD
@@ -1745,20 +1736,6 @@
 
         policy.claim(X,Y) :- claim.policy(Y,X)
 
-
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        %%% geography-related definitions
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-        same_continent(C1,C2) :- 
-            country.continent(C1,X) &
-            country.continent(C2,X)
-
-        adjacent_continent_countries(C1,C2) :-
-            country.continent(C1,X1) &
-            country.continent(C2,X2) &
-            adjacent_continent(X1,X2)
-
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%% general definitions and predefined relations
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2112,7 +2089,6 @@
     <!-- Expected format of english templates is specified in localstorage.js above the getTemplates() function -->
     <p id='english_templates_label' class='readonly_textarea_label' style='display:none'>Default English Templates</p>
     <textarea id='english_templates' class='readonly_textarea' readonly rows='12' cols='96' wrap='soft' style='display:none'>
-        %(claim.policy(C,P),"the policy of $C$ is $P$")
         (policy.startdate(P,S),"$P$ began on $S$")
         (policy.enddate(P,E),"$P$ ended on $E$")
         (claim.recommendation(C,decline),"$C$ was declined")
@@ -2121,7 +2097,6 @@
         (claim.exclusion(C,preexist),"the affliction in $C$ is a pre-existing condition")
         (partial_day(C),"the hospital stay of $C$ lasted less than one day")
         (~partial_day(C),"the hospital stay of $C$ lasted at least one day")
-        %(claim.hospitalization(C,Z),"the hospitalization of $C$ is $Z$")
         (duration(Z,T),"the duration of $Z$ was $T$ milliseconds")
         (less(X,Y),"$X$ is less than $Y$")
         (exclusion(C,4.3i),"the claim violates exclusion 4.3i")
@@ -2134,10 +2109,6 @@
         (hospitalization.endtime(Z,T),"$Z$ ended at $T$")
         (hospitalization.cause(Z,C),"$Z$ was caused by $C$")
         (accident.activity(C,A),"the activity in $C$ was $A$")
-        (same_continent(C1,C2),"$C1$ and $C2$ reside on the same continent")
-        (adjacent_continent_countries(C1,C2), "$C1$ and $C2$ are on adjacent continents")
-        (adjacent_continent(X1,X2), "$X1$ and $X2$ are adjacent")
-        %(country.continent(C,X),"$X$ is the continent on which $C$ resides")
         (overlap(XS,XE,YS,YE),"[$XS$, $XE$] overlaps with [$YS$, $YE$]")
         (distinct(X,Y),"$X$ is not equal to $Y$")
         (evaluate(parsedate(DATE),[Y,M,D]),"$DATE$ parses as [$Y$,$M$,$D$]")
@@ -2147,6 +2118,7 @@
         (evaluate(stringmin(X,Y),Z),"the minimum of $X$ and $Y$ is $Z$")
         (evaluate(minus(X,Y),Z),"$X$ minus $Y$ is $Z$")
         (countofall(E,exclusion(C,E),0),"there is no exclusion for $C$")
+        
         % Procedural templates for unique attributes
         (claim.hospitalization, "hospitalization", "listed in $C$")
         (country.continent, "continent", "on which $C$ resides")

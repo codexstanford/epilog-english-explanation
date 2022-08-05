@@ -1,4 +1,4 @@
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%% Background Data
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -779,6 +779,15 @@
         type(south_america,continent)
         type(oceania,continent)
 
+        adjacent_continent(africa,europe)
+        adjacent_continent(europe,africa)
+        adjacent_continent(europe,asia)
+        adjacent_continent(asia,europe)
+        adjacent_continent(asia,africa)
+        adjacent_continent(africa,asia)
+        adjacent_continent(north_america,south_america)
+        adjacent_continent(south_america,north_america)
+
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %%% date
         %%% YYYY_MM_DD
@@ -1104,7 +1113,7 @@
         hospitalization.startdate(hospitalization21,2021_08_23)
         hospitalization.starttime(hospitalization21,22_00_00)
         hospitalization.enddate(hospitalization21,2021_08_24)
-        hospitalization.endtime(hospitalization21,22_00_00)
+        hospitalization.endtime(hospitalization21,10_00_00)
 
 
         type(hospitalization51,hospitalization)
