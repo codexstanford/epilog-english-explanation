@@ -30,12 +30,12 @@
 // A tree representation of the derivation of a ground atom
 class DerivationTree {
     // groundAtom: A list or string representing an Epilog ground atom.
-    constructor(groundAtom, facts, rules, metadata, english_templates) {
+    constructor(groundAtom, facts, rules, metadata, english_templates, options) {
         if (typeof(groundAtom) === "string") {
             groundAtom = read(groundAtom);
         }
 
-        this.root = new FactWrapper(groundAtom, english_templates);
+        this.root = new FactWrapper(groundAtom, facts, rules, metadata, english_templates, options);
 
         // Whether the root fact should appear in the explanation.
         this.visible = true;
@@ -54,7 +54,7 @@ class DerivationTree {
         
         // Recursively construct derivations of the facts used to derive the root
         for (let i = 2; i < explanation.length; i++) {
-            this.children.push(new DerivationTree(explanation[i], facts, rules, metadata, english_templates));
+            this.children.push(new DerivationTree(explanation[i], facts, rules, metadata, english_templates, options));
         }
         
     }
@@ -103,6 +103,23 @@ class DerivationTree {
         }
 
         return matchedSymbols;
+    }
+
+    // Returns an array of FactWrappers containing all facts in the tree with templates that matched the given symbol.
+    getFactsWithMatchedSymbol(matchedSymbol) {
+        let factsWithSymbol = [];
+
+        for (let [varStr, replacementStr] of this.root.templateVarReplacementSeq) {
+            if (this.root.templateMatchedVars.get(varStr) === matchedSymbol) {
+                factsWithSymbol.push(this.root);
+            }
+        }
+
+        for (let child of this.children) {
+            factsWithSymbol = factsWithSymbol.concat(child.getFactsWithMatchedSymbol(matchedSymbol));
+        }
+
+        return factsWithSymbol;
     }
 
     // Converts the DerivationTree into a nested list of FactWrappers. The Tree is traversed in DFS order.
@@ -188,7 +205,7 @@ class DerivationTree {
 // A wrapper class for Epilog facts to simplify converting to templates. 
 class FactWrapper {
     // groundAtom: A list or string representing an Epilog ground atom.
-    constructor(groundAtom, english_templates) {
+    constructor(groundAtom, facts, rules, metadata, english_templates, options) {
         //Convert to list format
         if (typeof(groundAtom) === 'string') {
             groundAtom = read(groundAtom);
@@ -196,10 +213,37 @@ class FactWrapper {
         this.groundAtom = groundAtom;
         
         //Find matching template, if it exists
-        [this.unfilledTemplate, this.templateMatchedVars, this.templateVarReplacementSeq] = getMatchingTemplate(this.groundAtom, english_templates);
+        let proceduralTemplateType = "";
+        [this.unfilledTemplate, this.templateMatchedVars, this.templateVarReplacementSeq, proceduralTemplateType] = getMatchingTemplate(this.groundAtom, english_templates);
 
         if (this.unfilledTemplate === false) {
             this.unfilledTemplate = grind(this.groundAtom);
+        }
+
+        // validate that, if a procedural template is being used, it is being applied appropriately to the fact.
+            // All construction of the fact should be finished before performing this check.
+        switch (proceduralTemplateType) {
+            case 'none':
+                break;
+                
+            case 'attributeRelation_unique':
+                let relation = this.getPredicateSymbol();
+                if (!isAttributeRelation(relation, facts, rules, metadata, options)) {
+                    console.log("[Warning] FactWrapper constructor - procedural template of type attributeRelation_unique has matched a non-attribute relation fact.");
+                    break;
+                }
+
+                let classInstance = this.getClassInstanceIfAttribute(facts, rules, metadata, options);
+
+                if (!isUniqueAttributeForInstance(relation, classInstance, facts, rules, metadata, options)) {
+                    console.log("[Warning] FactWrapper constructor - procedural template of type attributeRelation_unique has matched an attribute that \
+                                 is not unique for the class instance:", this.asString());
+                    break;
+                }
+
+                break;
+            default:
+                break;
         }
     }
 
@@ -353,7 +397,7 @@ function toEnglish(conclusion,
     }
 
     // Generate the DerivationTree for the given conclusion. This is a complete representation of the derivation.
-    let derivTree = new DerivationTree(conclusion, facts, rules, metadata, english_templates);
+    let derivTree = new DerivationTree(conclusion, facts, rules, metadata, english_templates, options);
 
     // Remove subtrees/facts that will not be taken into account for the explanation.
     derivTree = pruneDerivTree(derivTree, options);
@@ -366,7 +410,8 @@ function toEnglish(conclusion,
     // Perform all passes replacing matched symbols in templates.
     derivTree = performSymbolReplacementPasses(derivTree, facts, rules, metadata, options);
 
-    
+    //console.log(derivTree);
+
     let englishExplanation = derivTreeToEnglish(derivTree, facts, rules, metadata, english_templates, options);
 
     return englishExplanation;
@@ -401,6 +446,14 @@ function performTreeVisibilityPasses(derivTree, facts, rules, metadata, options)
     //      - the range of the attribute is unique (for the class instance in the fact)
     //      - the class instance has no other attributes with the same range
     //      - the attribute value is the only symbol of its type in the explanation 
+    //
+    //      Should add additional restrictions so that attribute facts are not removed when their removal would make the explanation ambiguous (or remove all facts),
+    //          but the exact conditions are more complex than I would like. Tried the below, but this was overly restrictive.
+    //          For now, will rely on the user to decide whether to removeClassAttributes or not.
+    //          (E.g. The current conditions work well for plan_in_effect, but remove all explanation facts in same_continent.)
+    //      Attempted additional condition:
+    //      - the attribute value appears in at least one non-attribute fact in the explanation
+    //          - Just appearing as a non-attribute value is not enough, as it could still be hidden if it only appears in attribute facts and its attributes are hidden.
     if (options.removeClassAttributes) {
         let symbolTypeMap = constructSymbolTypeMap(derivTree, facts, rules, options);
 
@@ -424,10 +477,26 @@ function performTreeVisibilityPasses(derivTree, facts, rules, metadata, options)
                 isOnlyAttributeOfTypeForInstance(predicateSymbol, classInstance, facts, rules, metadata, options)) {
                     
                     let valType = getRangeOfAttribute(predicateSymbol, facts, rules, metadata, options);
-                    
+
+                    let appearsInNonAttributeFact = true;
+                    /*let val = subtree.root.getValueIfAttribute(facts, rules, metadata, options);
+                    let factsWithMatchedSymbol = derivTree.getFactsWithMatchedSymbol(val);
+
+
+                    let appearsInNonAttributeFact = false;
+                    for (let fact of factsWithMatchedSymbol) {
+                        // Don't count the conclusion
+                        if (fact !== derivTree.root && !isAttributeRelation(fact.getPredicateSymbol(), facts, rules, metadata, options)) {
+                            appearsInNonAttributeFact = true;
+                            break;
+                        }
+                    }
+
+                    console.log("appears in other fact:",val,appearsInNonAttributeFact,factsWithMatchedSymbol);*/
+
                     // Verify that this value is the only object of its type in the explanation.
                     // If so, hide this subtree and ignore its children.
-                    if ([...symbolTypeMap.keys()].filter(key => symbolTypeMap.get(key) === valType).length === 1) {
+                    if (appearsInNonAttributeFact && [...symbolTypeMap.keys()].filter(key => symbolTypeMap.get(key) === valType).length === 1) {
                         subtree.setTreeVisibility(false);
                         continue;
                     }
@@ -459,13 +528,7 @@ function performSymbolReplacementPasses(derivTree, facts, rules, metadata, optio
         if (options.bindLocalConstants) {
             derivTree = bindClassAttributeSymbols(derivTree, symbolToReplacementMap, facts, rules, metadata, options);
         }
-
     }
-
-    // TODO: Add ordinal numbering.
-        // If multiple symbols are being replaced with the same name, add ordinal numbers to distinguish between them.
-        // Should move this to be part of the replaceWithType subcategory of passes. Paramaterized by by a new options property.
-        // This being decomposed is useful.
 
     return derivTree;
 }
@@ -502,7 +565,7 @@ function derivTreeToEnglish(derivTree, facts, rules, metadata, english_templates
         //If linkFromExplanation, generate a link to an explanation for each fact in the explanation.
         if (options.linkFromExplanation) {
             //If linkGivenFacts is false, don't link facts without children. (i.e. those that don't have derivations, and are simply given as true)
-            if (options.linkGivenFacts || (new DerivationTree(child.root.asString(), facts, rules, metadata, english_templates)).children.length > 0) {
+            if (options.linkGivenFacts || (new DerivationTree(child.root.asString(), facts, rules, metadata, english_templates, options)).children.length > 0) {
                 childExplanation = factLinkElem(child.root, childExplanation);
             }
         }
@@ -547,14 +610,18 @@ function replaceSymbolsWithTypes(derivTree, facts, rules, metadata, options) {
         // For each symbol, replace it with...
             // "the [type]" if it is the only symbol of its type in the explanation.
             // "the (ordinal) [type]" otherwise.
-        for (const symbol of symbolsOfType) {
+        // This should work reasonably well as-is. The primary future improvement will be varying the determiner used before the type.
+        for (let i = 0; i<numSymbolsOfType; i++) {
+            const symbol = symbolsOfType[i];
+            const symbolTypeStr = symbolType;
+
             // No ordinal necessary if only symbol of type in the explanation.
             if (numSymbolsOfType === 1) {
-                symbolToTypeReplacementMap.set(symbol, "the " + symbolType);
+                symbolToTypeReplacementMap.set(symbol, "the " + symbolTypeStr);
                 continue;
             }
 
-            //TODO: Account for the case where there are multiple objects of the same type in the explanation.
+            symbolToTypeReplacementMap.set(symbol, "the " + ordinalNumeralFor(i+1) + " " + symbolTypeStr);
         }
     }
 
@@ -800,7 +867,7 @@ function getMatchingTemplate(groundAtom, english_templates) {
                 varReplacementSeq.push([varStr, matchedVarMap.get(varStr)]);
             });
 
-            return [matchedTemplate.templateString, matchedVarMap, varReplacementSeq];            
+            return [matchedTemplate.templateString, matchedVarMap, varReplacementSeq, matchedTemplate.proceduralType];
         }
     }
 
