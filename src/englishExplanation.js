@@ -1,3 +1,8 @@
+import * as db from './epilogDatabase.js';
+import * as epilog from './epilog.js';
+import * as explain from './explain.js';
+import * as langUtil from './languageUtils.js';
+
 //==============================================================================
 // english_explanation.js
 //==============================================================================
@@ -14,9 +19,9 @@
 //==============================================================================
 // Direct Dependencies
 //==============================================================================
-// {symbolp, read, grind} from epilog.js
+// {symbolp, read, grind, stripquotes, varp} from epilog.js
 // {explain} from explain.js
-// {isDerivableFact, getSymbolType, isClass, isAttributeRelation, isAttributeOfClass} from epilog_database.js
+// {isDerivableFact, getSymbolType, isAttributeRelation, isUniqueAttributeForInstance} from epilog_database.js
 //==============================================================================
 
 //==============================================================================
@@ -32,7 +37,7 @@ class DerivationTree {
     // groundAtom: A list or string representing an Epilog ground atom.
     constructor(groundAtom, facts, rules, metadata, english_templates, options) {
         if (typeof(groundAtom) === "string") {
-            groundAtom = read(groundAtom);
+            groundAtom = epilog.read(groundAtom);
         }
 
         this.root = new FactWrapper(groundAtom, facts, rules, metadata, english_templates, options);
@@ -42,7 +47,7 @@ class DerivationTree {
 
         this.children = [];
 
-        const explanation = explain(groundAtom, facts, rules);
+        const explanation = explain.explain(groundAtom, facts, rules);
         
         // There are no children.
         if (typeof(explanation) === "string" ||
@@ -208,7 +213,7 @@ class FactWrapper {
     constructor(groundAtom, facts, rules, metadata, english_templates, options) {
         //Convert to list format
         if (typeof(groundAtom) === 'string') {
-            groundAtom = read(groundAtom);
+            groundAtom = epilog.read(groundAtom);
         }
         this.groundAtom = groundAtom;
         
@@ -217,7 +222,7 @@ class FactWrapper {
         [this.unfilledTemplate, this.templateMatchedVars, this.templateVarReplacementSeq, proceduralTemplateType] = getMatchingTemplate(this.groundAtom, english_templates);
 
         if (this.unfilledTemplate === false) {
-            this.unfilledTemplate = grind(this.groundAtom);
+            this.unfilledTemplate = epilog.grind(this.groundAtom);
         }
 
         // validate that, if a procedural template is being used, it is being applied appropriately to the fact.
@@ -228,14 +233,14 @@ class FactWrapper {
 
             case 'attributeRelation_unique':
                 let relation = this.getPredicateSymbol();
-                if (!isAttributeRelation(relation, facts, rules, metadata, options)) {
+                if (!db.isAttributeRelation(relation, facts, rules, metadata, options)) {
                     console.log("[Warning] FactWrapper constructor - procedural template of type attributeRelation_unique has matched a non-attribute relation fact.");
                     break;
                 }
 
                 let classInstance = this.getClassInstanceIfAttribute(facts, rules, metadata, options);
 
-                if (!isUniqueAttributeForInstance(relation, classInstance, facts, rules, metadata, options)) {
+                if (!db.isUniqueAttributeForInstance(relation, classInstance, facts, rules, metadata, options)) {
                     console.log("[Warning] FactWrapper constructor - procedural template of type attributeRelation_unique has matched an attribute that \
                                  is not unique for the class instance:", this.asString());
                     break;
@@ -252,14 +257,14 @@ class FactWrapper {
     }
 
     asString() {
-        return grind(this.groundAtom);
+        return epilog.grind(this.groundAtom);
     }
 
     // Returns the string of the groundAtom's predicate if it exists.
     // If not, returns false.
     getPredicateSymbol() {
         const listAtom = this.asList();
-        if (symbolp(listAtom)) {
+        if (epilog.symbolp(listAtom)) {
             return false;
         }
 
@@ -275,7 +280,7 @@ class FactWrapper {
     getNonPredicateSymbols() {
         const listAtom = this.asList();
         
-        if (symbolp(listAtom)) {
+        if (epilog.symbolp(listAtom)) {
             return new Set([listAtom]);
         }
 
@@ -286,7 +291,7 @@ class FactWrapper {
         let elem;
 
         while ((typeof(elem = queue.shift()) !== 'undefined')) {
-            if (symbolp(elem)) {
+            if (epilog.symbolp(elem)) {
                 symbolList.push(elem);
             } else 
             // Add elems to the queue, excluding predicates and 'rule'
@@ -302,14 +307,14 @@ class FactWrapper {
     // If an attribute relation fact, returns a string containing the value of the attribute.
     // If not an attribute relation fact, returns false.
     getValueIfAttribute(facts, rules, metadata, options) {
-        if (!isAttributeRelation(this.getPredicateSymbol(), facts, rules, metadata, options)) {
+        if (!db.isAttributeRelation(this.getPredicateSymbol(), facts, rules, metadata, options)) {
             return false;
         }
 
         let listAtom = this.asList();
         let attributeValue = listAtom[listAtom.length - 1];
         if (typeof attributeValue !== "string") {
-            attributeValue = grind(attributeValue);
+            attributeValue = epilog.grind(attributeValue);
         }
 
         return attributeValue;
@@ -319,14 +324,14 @@ class FactWrapper {
     // If an attribute relation fact, returns a string containing the class instance of the attribute. (I.e. the first argument)
     // If not an attribute relation fact, returns false.
     getClassInstanceIfAttribute(facts, rules, metadata, options) {
-        if (!isAttributeRelation(this.getPredicateSymbol(), facts, rules, metadata, options)) {
+        if (!db.isAttributeRelation(this.getPredicateSymbol(), facts, rules, metadata, options)) {
             return false;
         }
 
         let listAtom = this.asList();
         let classInstance = listAtom[listAtom.length - 2];
         if (typeof classInstance !== "string") {
-            classInstance = grind(classInstance);
+            classInstance = epilog.grind(classInstance);
         }
 
         return classInstance;
@@ -334,7 +339,7 @@ class FactWrapper {
 
     //Returns the unfilledTemplate with vars replaced as specified by the templateVarReplacementSeq
     getFilledTemplate() {
-        let strToFill = stripquotes(this.unfilledTemplate);
+        let strToFill = epilog.stripquotes(this.unfilledTemplate);
 
         for (let i=0; i<this.templateVarReplacementSeq.length; i++) {
             const replacementPair = this.templateVarReplacementSeq[i];
@@ -380,18 +385,29 @@ class FactWrapper {
  *      linkGivenFacts:  whether facts that are not derivable and are given as true should be hyperlinked as above. No effect if linkFromExplanation is false.
  * 
  */
-function toEnglish(conclusion,
+export function toEnglish(conclusion,
                    facts,
                    rules,
                    metadata,
                    english_templates, 
-                   options = {typePredicate: "type", replaceWithType: true, removeClassAttributes: false, bindLocalConstants: true, verifyDerivable: true, useMetadata: true, linkFromExplanation: true, linkGivenFacts: true }) {
+                   options) {
 
     // Note: If replaceWithType is false, bindLocalConstants is irrelevant
     // Note: if linkFromExplanation is false, linkGivenFacts is irrelevant
+
+    const defaults = {
+        typePredicate: "type",
+        replaceWithType: true,
+        removeClassAttributes: false,
+        bindLocalConstants: true,
+        verifyDerivable: true,
+        useMetadata: true,
+        linkFromExplanation: true,
+        linkGivenFacts: true };
+    options = Object.assign({}, defaults, options);
     
     // Check whether the conclusion is true before translating
-    if (options.verifyDerivable && !isDerivableFact(conclusion, facts, rules)) {
+    if (options.verifyDerivable && !db.isDerivableFact(conclusion, facts, rules)) {
         console.log("[Warning] toEnglish -", conclusion, "is not derivable from the given facts and rules.");
         return conclusion + " is not derivable from the given facts and rules.";
     }
@@ -472,11 +488,11 @@ function performTreeVisibilityPasses(derivTree, facts, rules, metadata, options)
             let predicateSymbol = subtree.root.getPredicateSymbol();
             let classInstance = subtree.root.getClassInstanceIfAttribute(facts, rules, metadata, options);
 
-            if (isAttributeRelation(predicateSymbol, facts, rules, metadata, options) && 
-                isUniqueAttributeForInstance(predicateSymbol, classInstance, facts, rules, metadata, options) &&
-                isOnlyAttributeOfTypeForInstance(predicateSymbol, classInstance, facts, rules, metadata, options)) {
+            if (db.isAttributeRelation(predicateSymbol, facts, rules, metadata, options) && 
+                db.isUniqueAttributeForInstance(predicateSymbol, classInstance, facts, rules, metadata, options) &&
+                db.isOnlyAttributeOfTypeForInstance(predicateSymbol, classInstance, facts, rules, metadata, options)) {
                     
-                    let valType = getRangeOfAttribute(predicateSymbol, facts, rules, metadata, options);
+                    let valType = db.getRangeOfAttribute(predicateSymbol, facts, rules, metadata, options);
 
                     let appearsInNonAttributeFact = true;
                     /*let val = subtree.root.getValueIfAttribute(facts, rules, metadata, options);
@@ -486,7 +502,7 @@ function performTreeVisibilityPasses(derivTree, facts, rules, metadata, options)
                     let appearsInNonAttributeFact = false;
                     for (let fact of factsWithMatchedSymbol) {
                         // Don't count the conclusion
-                        if (fact !== derivTree.root && !isAttributeRelation(fact.getPredicateSymbol(), facts, rules, metadata, options)) {
+                        if (fact !== derivTree.root && !db.isAttributeRelation(fact.getPredicateSymbol(), facts, rules, metadata, options)) {
                             appearsInNonAttributeFact = true;
                             break;
                         }
@@ -520,6 +536,7 @@ function performTreeVisibilityPasses(derivTree, facts, rules, metadata, options)
 function performSymbolReplacementPasses(derivTree, facts, rules, metadata, options) {
     if (options.replaceWithType) {
         // Replace object symbols with "the [type]" as a baseline.
+        let symbolToReplacementMap;
         [derivTree, symbolToReplacementMap] = replaceSymbolsWithTypes(derivTree, facts, rules, metadata, options);
         
         // Rare/niche pass!
@@ -621,7 +638,7 @@ function replaceSymbolsWithTypes(derivTree, facts, rules, metadata, options) {
                 continue;
             }
 
-            symbolToTypeReplacementMap.set(symbol, "the " + ordinalNumeralFor(i+1) + " " + symbolTypeStr);
+            symbolToTypeReplacementMap.set(symbol, "the " + langUtil.ordinalNumeralFor(i+1) + " " + symbolTypeStr);
         }
     }
 
@@ -666,7 +683,7 @@ function bindClassAttributeSymbols(derivTree, symbolToReplacementMap, facts, rul
         let relation = subtree.root.getPredicateSymbol();
 
         if (!subtree.visible && 
-            isAttributeRelation(relation, facts, rules, metadata, options)) {
+            db.isAttributeRelation(relation, facts, rules, metadata, options)) {
 
             // Only consider the first class instance that has val as an attribute value.
             let val = subtree.root.getValueIfAttribute(facts, rules, metadata, options);
@@ -674,7 +691,7 @@ function bindClassAttributeSymbols(derivTree, symbolToReplacementMap, facts, rul
                 continue;
             }
 
-            let valType = getSymbolType(val, facts, rules, options.typePredicate);
+            let valType = db.getSymbolType(val, facts, rules, options.typePredicate);
             let classInstance = subtree.root.getClassInstanceIfAttribute(facts, rules, metadata, options);
 
             let boundReplacementStr = "the " + valType + " of ";
@@ -757,7 +774,7 @@ function constructSymbolTypeMap(derivTree, facts, rules, options) {
                 continue;
             }
 
-            symbolTypeMap.set(symbol, getSymbolType(symbol, facts, rules, options.typePredicate));
+            symbolTypeMap.set(symbol, db.getSymbolType(symbol, facts, rules, options.typePredicate));
         }
 
 
@@ -788,7 +805,7 @@ function constructTypeToOrderedSymbolsMap(derivTree, facts, rules, options) {
     let typeToSymbolsMap = new Map();
     for (const symbol of new Set(visibleSymbolsInOrder)) {
     
-        const symbolType = getSymbolType(symbol, facts, rules, options.typePredicate);
+        const symbolType = db.getSymbolType(symbol, facts, rules, options.typePredicate);
 
         // Ignore untyped symbols.
         if (symbolType === false) {
@@ -851,7 +868,7 @@ function constructTypeToOrderedSymbolsMap(derivTree, facts, rules, options) {
 function getMatchingTemplate(groundAtom, english_templates) {
     //Convert to list format
     if (typeof(groundAtom) === "string") {
-        groundAtom = read(groundAtom);
+        groundAtom = epilog.read(groundAtom);
     }
 
     //Find the matching template
@@ -905,18 +922,18 @@ function simplematcher (x,y)
  {return simplematch(x,y,[])}
 
 function simplematch (x,y,bl)
- {if (varp(x)) {return simplematchvar(x,y,bl)};
-  if (symbolp(x)) {if (x===y) {return bl} else {return false}};
+ {if (epilog.varp(x)) {return simplematchvar(x,y,bl)};
+  if (epilog.symbolp(x)) {if (x===y) {return bl} else {return false}};
   return simplematchexp(x,y,bl)}
 
 function simplematchvar (x,y,bl)
  {var dum = simplevalue(x,bl);
-  if (dum!==false) {if (equalp(dum,y)) {return bl} else {return false}};
+  if (dum!==false) {if (epilog.equalp(dum,y)) {return bl} else {return false}};
   bl.push([x,y]);
   return bl}
 
 function simplematchexp(x,y,bl)
- {if (symbolp(y)) {return false};
+ {if (epilog.symbolp(y)) {return false};
   if (x.length!==y.length) {return false};
   for (var i=0; i<x.length; i++)
       {bl = simplematch(x[i],y[i],bl);

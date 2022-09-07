@@ -1,5 +1,7 @@
+import * as epilog from './epilog.js';
+
 //==============================================================================
-// localstorage.js
+// storage.js
 //==============================================================================
 //==============================================================================
 // A simplified and modified version of MRG's localstorage.js.
@@ -35,7 +37,7 @@
 //==============================================================================
 // Dependencies
 //==============================================================================
-// {read, readdata, definemorefacts, definemorerules, varp} from epilog.js
+// {read, readdata, definemorefacts, definemorerules, vars} from epilog.js
 //==============================================================================
 
 //==============================================================================
@@ -73,14 +75,14 @@
 // getEnglishTemplates
 //------------------------------------------------------------------------------
 
-const EPILOG_FACTS_KEY = "facts";
-const EPILOG_RULES_KEY = "rules";
-const EPILOG_METADATA_KEY = "metadata";
-const ENGLISH_TEMPLATES_KEY = "english_templates";
+export const EPILOG_FACTS_KEY = "facts";
+export const EPILOG_RULES_KEY = "rules";
+export const EPILOG_METADATA_KEY = "metadata";
+export const ENGLISH_TEMPLATES_KEY = "english_templates";
 
-const UPLOADED_FILENAME_KEY_SUFFIX = "_uploaded_filename";
+export const UPLOADED_FILENAME_KEY_SUFFIX = "_uploaded_filename";
 
-const OPTION_KEY_PREFIX = "option_";
+export const OPTION_KEY_PREFIX = "option_";
 
 // These specify from which files to load facts, rules, metadata, and templates.
 // When these are null, we load from hidden divs on the webpage.
@@ -96,7 +98,7 @@ var englishTemplatesFile = null;
 
 
 // Loads data into localStorage for global access and persistence between sessions.
-async function loadEpilogAndTemplates(overwriteExisting) {
+export async function loadEpilogAndTemplates(overwriteExisting) {
     await loadEpilogFacts(overwriteExisting);
     await loadEpilogRules(overwriteExisting)
     await loadEpilogMetadata(overwriteExisting)
@@ -105,7 +107,7 @@ async function loadEpilogAndTemplates(overwriteExisting) {
 
 // Reads string data from localStorage into a usable format:
 // Epilog facts and rules, and an array of templates. The template format is described above getTemplates())
-function getEpilogAndTemplates() {
+export function getEpilogAndTemplates() {
     return {
         facts: getEpilogFacts(),
         rules: getEpilogRules(),
@@ -115,19 +117,19 @@ function getEpilogAndTemplates() {
 }
 
 
-function setFactsFile(factsFile) {
+export function setFactsFile(factsFile) {
     epilogFactsFile = factsFile;
 }
 
-function setRulesFile(rulesFile) {
+export function setRulesFile(rulesFile) {
     epilogRulesFile = rulesFile;
 }
 
-function setMetadataFile(metadataFile) {
+export function setMetadataFile(metadataFile) {
     epilogMetadataFile = metadataFile;
 }
 
-function setTemplatesFile(templatesFile) {
+export function setTemplatesFile(templatesFile) {
     englishTemplatesFile = templatesFile;
 }
 
@@ -215,7 +217,7 @@ async function loadEnglishTemplates(overwriteExisting) {
     localStorage[ENGLISH_TEMPLATES_KEY + UPLOADED_FILENAME_KEY_SUFFIX] = englishTemplatesSelectedFileName;
 }
 
-function setAllOptions(overwriteExisting, options) {
+export function setAllOptions(overwriteExisting, options) {
     for (const [optionName, val] of Object.entries(options)) {
         setOption(overwriteExisting, optionName, val);
     }
@@ -231,7 +233,7 @@ function setOption(overwriteExisting, optionName, newVal) {
     localStorage[OPTION_KEY] = newVal;
 }
 
-function getAllOptions() {
+export function getAllOptions() {
     let options = {};
 
     for (const key in localStorage) {
@@ -260,35 +262,35 @@ function isOptionLoaded(optionName) {
     return localStorage.getItem(OPTION_KEY_PREFIX + optionName) !== null;
 }
 
-function isEpilogFactsLoaded() {
+export function isEpilogFactsLoaded() {
     return localStorage.getItem(EPILOG_FACTS_KEY) !== null;
 }
 
-function isEpilogRulesLoaded() {
+export function isEpilogRulesLoaded() {
     return localStorage.getItem(EPILOG_RULES_KEY) !== null;
 }
 
-function isEpilogMetadataLoaded() {
+export function isEpilogMetadataLoaded() {
     return localStorage.getItem(EPILOG_METADATA_KEY) !== null;
 }
 
-function isEnglishTemplatesLoaded() {
+export function isEnglishTemplatesLoaded() {
     return localStorage.getItem(ENGLISH_TEMPLATES_KEY) !== null;
 }
 
 //Parses the Epilog fact string from localStorage into an Epilog fact set 
-function getEpilogFacts() {
-    return definemorefacts([], readdata(localStorage[EPILOG_FACTS_KEY]));
+export function getEpilogFacts() {
+    return epilog.definemorefacts([], epilog.readdata(localStorage[EPILOG_FACTS_KEY]));
 }
 
 //Parses Epilog rules string from localStorage into an Epilog rule set
-function getEpilogRules() {
-    return definemorerules([], readdata(localStorage[EPILOG_RULES_KEY]));
+export function getEpilogRules() {
+    return epilog.definemorerules([], epilog.readdata(localStorage[EPILOG_RULES_KEY]));
 }
 
 //Parses Epilog metadata string from localStorage into an Epilog fact set
-function getEpilogMetadata() {
-    return definemorefacts([], readdata(localStorage[EPILOG_METADATA_KEY]));
+export function getEpilogMetadata() {
+    return epilog.definemorefacts([], epilog.readdata(localStorage[EPILOG_METADATA_KEY]));
 }
 
 class TemplateWrapper {
@@ -306,7 +308,7 @@ class TemplateWrapper {
    
     constructor(queryGoal, templateString, varSequence, proceduralType = 'none') {
         if (typeof(queryGoal) === "string") {
-            queryGoal = read(queryGoal);
+            queryGoal = epilog.read(queryGoal);
         }
         this.queryGoal = queryGoal;
         this.templateString = templateString;
@@ -342,8 +344,8 @@ class TemplateWrapper {
                  new TemplateWrapper("policy.startdate(P,S)", "$P$ began on $S$", ["P", "S"])]
 */
 
-function getEnglishTemplates(englishTemplateStr = null) {
-    if (englishTemplateStr === null) {
+export function getEnglishTemplates(englishTemplateStr) {
+    if (!englishTemplateStr) {
         if (!isEnglishTemplatesLoaded()) {
             console.log("[Warning] getEnglishTemplates: templates have not been loaded into localStorage.");
             return false;
@@ -367,7 +369,7 @@ function getEnglishTemplates(englishTemplateStr = null) {
         }
 
         //Convert to an epilog string to delegate parsing to epilog.js
-        const argList = read("english" + argStr.trim()).slice(1);
+        const argList = epilog.read("english" + argStr.trim()).slice(1);
 
         // Procedural template for attribute relations.
             // Assumes the attribute relation is unique.
@@ -383,7 +385,7 @@ function getEnglishTemplates(englishTemplateStr = null) {
         const [queryGoal, templateStr] = argList;
        
         //Get the variables from the goal
-        const varSet = vars(queryGoal);
+        const varSet = epilog.vars(queryGoal);
         
         //Scan the templateStr for instances of the vars, if any are present in the goal
         let varSequence = varSeqFromStr(templateStr, varSet);

@@ -1,0 +1,14 @@
+{
+    "root": true,
+    "env": {
+        "es2018": true,
+        "browser": true
+    },
+    "parserOptions": {
+        "sourceType": "module"
+    },
+    "rules": {
+        "no-undef": "error",
+        "no-extra-semi": "off"
+    }
+}

@@ -1,0 +1,10 @@
+{
+    "name": "epilog-english",
+    "description": "English explanations for Epilog queries.",
+    "version": "0.1.0",
+    "type": "module",
+    "exports": "./src",
+    "devDependencies": {
+        "eslint": "^8.23.0"
+    }
+}

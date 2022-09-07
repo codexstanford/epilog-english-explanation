@@ -1,5 +1,5 @@
 //==============================================================================
-// language_utils.js
+// languageUtils.js
 //==============================================================================
 //==============================================================================
 // Functions to assist in NLG
@@ -8,7 +8,7 @@
 //==============================================================================
 // External Interface (functions intended to be public)
 //==============================================================================
-// ordinalNumerFor
+// ordinalNumeralFor
 //==============================================================================
 
 //==============================================================================
@@ -27,7 +27,7 @@
  * n: a non-negative integer in the range [0, ]
  * 
  */
-function ordinalNumeralFor(n) {
+export function ordinalNumeralFor(n) {
     if (!(n >= 0 && Number.isInteger(n))) {
         console.log("[Warning] ordinalNumeralFor - ", n, "is not a non-negative integer.");
         return false;
