@@ -1,44 +1,10 @@
+/**
+ * @file A simplified and modified version of MRG's localstorage.js. Only
+ * contains methods used in loading and storing epilog facts, rules, templates,
+ * and metadata for english explanations.
+ */
+
 import * as epilog from './epilog.js';
-
-//==============================================================================
-// storage.js
-//==============================================================================
-//==============================================================================
-// A simplified and modified version of MRG's localstorage.js.
-// Only contains methods used in loading and storing epilog facts, rules, 
-// templates, and metadata for english explanations.
-//==============================================================================
-
-//==============================================================================
-// External Interface (functions intended to be public)
-//==============================================================================
-// loadEpilogAndTemplates
-// getEpilogAndTemplates
-//
-// getEpilogFacts
-// getEpilogRules
-// getEpilogMetadata
-// getEnglishTemplates
-//
-// setFactsFile
-// setRulesFile
-// setMetadataFile
-// setTemplatesFile
-//
-// setAllOptions
-// getAllOptions
-//
-// isEpilogFactsLoaded
-// isEpilogRulesLoaded
-// isEpilogMetadataLoaded
-// isEnglishTemplatesLoaded
-//==============================================================================
-
-//==============================================================================
-// Dependencies
-//==============================================================================
-// {read, readdata, definemorefacts, definemorerules, vars} from epilog.js
-//==============================================================================
 
 //==============================================================================
 // localStorage data loading

@@ -1,36 +1,11 @@
+/**
+ * @file Functions to generate English-language explanations of Epilog derivations.
+ */
+
 import * as db from './epilogDatabase.js';
 import * as epilog from './epilog.js';
 import * as explain from './explain.js';
 import * as langUtil from './languageUtils.js';
-
-//==============================================================================
-// english_explanation.js
-//==============================================================================
-//==============================================================================
-// Functions to generate English-language explanations of Epilog derivations 
-//==============================================================================
-
-//==============================================================================
-// External Interface (functions intended to be public)
-//==============================================================================
-// toEnglish
-//==============================================================================
-
-//==============================================================================
-// Direct Dependencies
-//==============================================================================
-// {symbolp, read, grind, stripquotes, varp} from epilog.js
-// {explain} from explain.js
-// {isDerivableFact, getSymbolType, isAttributeRelation, isUniqueAttributeForInstance} from epilog_database.js
-//==============================================================================
-
-//==============================================================================
-// classes
-//==============================================================================
-//------------------------------------------------------------------------------
-// DerivationTree (class)
-// FactWrapper (class)
-//------------------------------------------------------------------------------
 
 // A tree representation of the derivation of a ground atom
 class DerivationTree {

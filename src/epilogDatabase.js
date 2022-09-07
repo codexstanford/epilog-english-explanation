@@ -1,30 +1,9 @@
+/**
+ * @file Functions to answer questions about relations, rules, and facts in a
+ * given Epilog database.
+ */
+
 import * as epilog from './epilog.js';
-
-//==============================================================================
-// epilog_database.js
-//==============================================================================
-//==============================================================================
-// Functions to answer questions about relations, rules,
-// and facts in a given Epilog database.
-//==============================================================================
-
-//==============================================================================
-// External Interface (functions intended to be public)
-//==============================================================================
-// isDerivableFact
-// getSymbolType
-// isClass
-// isAttributeRelation
-// isAttributeOfClass
-// isUniqueAttributeForInstance
-// getClassOfAttribute
-//==============================================================================
-
-//==============================================================================
-// Direct Dependencies
-//==============================================================================
-// {basefindp, basefinds, basefindx, compfindp, read, symbolp} from epilog.js
-//==============================================================================
 
 //==============================================================================
 // functions about instantiated facts/rules
