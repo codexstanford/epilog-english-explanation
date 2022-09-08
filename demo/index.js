@@ -206,7 +206,7 @@ document.getElementById('toggle_visibility_metadata').addEventListener('click', 
 });
 
 document.getElementById('toggle_visibility_templates').addEventListener('click', function () {
-    toggleReadonlyTextareaVisibility('templates');
+    toggleReadonlyTextareaVisibility('english_templates');
 });
 
 document.getElementById('button_reload_default').addEventListener('click', function () {
