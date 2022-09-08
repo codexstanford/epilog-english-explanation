@@ -3,7 +3,9 @@
     "description": "English explanations for Epilog queries.",
     "version": "0.1.0",
     "type": "module",
-    "exports": "./src",
+    "exports": {
+        "./*": "./src/*.js"
+    },
     "devDependencies": {
         "eslint": "^8.23.0"
     }
