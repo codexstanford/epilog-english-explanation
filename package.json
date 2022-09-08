@@ -2,6 +2,10 @@
     "name": "@epilog/english-explanation",
     "description": "English explanations for Epilog queries.",
     "version": "0.1.0",
+    "files": [
+        "src/**/*",
+        "dist/**/*"
+    ],
     "exports": {
         "./*": {
             "import": "./src/*.js",
@@ -9,8 +13,7 @@
         }
     },
     "scripts": {
-        "package": "tsc --project .",
-        "prepublishOnly": "npm run package"
+        "prepare": "tsc --project ."
     },
     "devDependencies": {
         "eslint": "^8.23.0",
