@@ -2,7 +2,6 @@
     "name": "@epilog/english-explanation",
     "description": "English explanations for Epilog queries.",
     "version": "0.1.0",
-    "type": "module",
     "exports": {
         "./*": {
             "import": "./src/*.js",
