@@ -4,9 +4,16 @@
     "version": "0.1.0",
     "type": "module",
     "exports": {
-        "./*": "./src/*.js"
+        "./*": {
+            "import": "./src/*.js",
+            "require": "./dist/cjs/*.js"
+        }
+    },
+    "scripts": {
+        "prepublishOnly": "tsc --project ."
     },
     "devDependencies": {
-        "eslint": "^8.23.0"
+        "eslint": "^8.23.0",
+        "typescript": "^4.8.2"
     }
 }
