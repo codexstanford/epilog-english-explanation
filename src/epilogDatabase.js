@@ -1,27 +1,9 @@
-//==============================================================================
-// epilog_database.js
-//==============================================================================
-//==============================================================================
-// Functions to answer questions about relations, rules,
-// and facts in a given Epilog database.
-//==============================================================================
+/**
+ * @file Functions to answer questions about relations, rules, and facts in a
+ * given Epilog database.
+ */
 
-//==============================================================================
-// External Interface (functions intended to be public)
-//==============================================================================
-// isDerivableFact
-// getSymbolType
-// isClass
-// isAttributeRelation
-// isAttributeOfClass
-// getClassOfAttribute
-//==============================================================================
-
-//==============================================================================
-// Direct Dependencies
-//==============================================================================
-// {read, symbolp} from epilog.js
-//==============================================================================
+import * as epilog from './epilog.js';
 
 //==============================================================================
 // functions about instantiated facts/rules
@@ -38,29 +20,29 @@
 // General TODO: implement checks without metadata
 
 //Determine whether a groundAtom is derivable from the given facts and rules
-function isDerivableFact(groundAtom, facts, rules) {
+export function isDerivableFact(groundAtom, facts, rules) {
     if (typeof(groundAtom) === "string") {
-        groundAtom = read(groundAtom);
+        groundAtom = epilog.read(groundAtom);
     }
     
     //Must use compfindp, not basefindp. basefindp doesn't handle functions like evaluate
-    return compfindp(groundAtom, facts, rules);
+    return epilog.compfindp(groundAtom, facts, rules);
 }
 
 // Returns the type of the symbol if its type is specified in facts. Returns false otherwise.
-function getSymbolType(symbol, facts, rules, typePredicate) {
-    if (!symbolp(symbol)) {
+export function getSymbolType(symbol, facts, rules, typePredicate) {
+    if (!epilog.symbolp(symbol)) {
         console.log("[Warning] getSymbolType - first argument must be a symbol string.");
         return false;
     }
 
-    const type = basefindx('T',read(typePredicate + '('+symbol+',T)'), facts, rules);
+    const type = epilog.basefindx('T',epilog.read(typePredicate + '('+symbol+',T)'), facts, rules);
 
     return type;
 }
 
 // Determines whether relation is an attribute relation of className
-function isAttributeOfClass(relation, className, facts, rules, metadata, options) {
+export function isAttributeOfClass(relation, className, facts, rules, metadata, options) {
     if (relation === false) {
         return false;
     }
@@ -88,7 +70,7 @@ function isAttributeOfClass(relation, className, facts, rules, metadata, options
     }
 
     if (options.useMetadata) {
-        return basefindp(read('attribute(' + className + ',' + relation + ')'), metadata, []);
+        return epilog.basefindp(epilog.read('attribute(' + className + ',' + relation + ')'), metadata, []);
     }
 
     return belongsToClass;
@@ -96,21 +78,21 @@ function isAttributeOfClass(relation, className, facts, rules, metadata, options
 }
 
 // Determines whether the given relation is an attribute relation.
-function isAttributeRelation(relation, facts, rules, metadata, options) {
+export function isAttributeRelation(relation, facts, rules, metadata, options) {
     if (typeof(relation) !== "string") {
         console.log("[Warning] isAttributeRelation - first argument must be a string.");
         return false;
     }
 
     if (options.useMetadata) {
-        return basefindp(read('type(' + relation + ',attributerelation)'), metadata, []);
+        return epilog.basefindp(epilog.read('type(' + relation + ',attributerelation)'), metadata, []);
     }
 
     return false;
 }
 
 // Determines whether the given className is a class.
-function isClass(className, facts, rules, metadata, options) {
+export function isClass(className, facts, rules, metadata, options) {
     // getSymbolType can return false if a constant doesn't have a specified type.
     if (className === false) {
         return false;
@@ -122,14 +104,14 @@ function isClass(className, facts, rules, metadata, options) {
     }
 
     if (options.useMetadata) {
-        return basefindp(read('type(' + className + ',class)'), metadata, []);
+        return epilog.basefindp(epilog.read('type(' + className + ',class)'), metadata, []);
     }
 
     return false;
 }
 
 // Gets the class that the given attribute relation belongs to
-function getClassOfAttribute(attributeRelation, facts, rules, metadata, options) {
+export function getClassOfAttribute(attributeRelation, facts, rules, metadata, options) {
     if (typeof(attributeRelation) !== "string") {
         console.log("[Warning] getClassOfAttribute - first argument must be a string.");
         return false;
@@ -141,14 +123,14 @@ function getClassOfAttribute(attributeRelation, facts, rules, metadata, options)
     }
 
     if (options.useMetadata) {
-        return basefindx('X',read('attribute(X,'+attributeRelation+')'), metadata, []);
+        return epilog.basefindx('X',epilog.read('attribute(X,'+attributeRelation+')'), metadata, []);
     }
 
     return false;
 }
 
 // Returns the range of the given attribute relation as a string.
-function getRangeOfAttribute(attributeRelation, facts, rules, metadata, options) {
+export function getRangeOfAttribute(attributeRelation, facts, rules, metadata, options) {
     if (typeof(attributeRelation) !== "string") {
         console.log("[Warning] getRangeOfAttribute - first argument must be a string.");
         return false;
@@ -160,7 +142,7 @@ function getRangeOfAttribute(attributeRelation, facts, rules, metadata, options)
     }
 
     if (options.useMetadata) {
-        return basefindx('Y',read('range('+attributeRelation+',Y)'), metadata, []);
+        return epilog.basefindx('Y',epilog.read('range('+attributeRelation+',Y)'), metadata, []);
     }
     
     return false;
@@ -179,7 +161,7 @@ function getAttributesOfClass(className, facts, rules, metadata, options) {
     }
     
     if (options.useMetadata) {
-        return basefinds('Y',read('attribute('+className+',Y)'), metadata, []);
+        return epilog.basefinds('Y',epilog.read('attribute('+className+',Y)'), metadata, []);
     }
 
     return [];
@@ -198,14 +180,14 @@ function isUniqueAttribute(attributeRelation, facts, rules, metadata, options) {
     }
 
     if (options.useMetadata) {
-        return basefindp(read('unique(' + attributeRelation + ',yes)'), metadata, []);
+        return epilog.basefindp(epilog.read('unique(' + attributeRelation + ',yes)'), metadata, []);
     }
 
     return false;
 }
 
 // Determines whether there is at most 1 fact with predicate attributeRelation for the given class instance.
-function isUniqueAttributeForInstance(attributeRelation, classInstance, facts, rules, metadata, options) {
+export function isUniqueAttributeForInstance(attributeRelation, classInstance, facts, rules, metadata, options) {
     /*     Begin input validation    */
     if (typeof(attributeRelation) !== "string") {
         console.log("[Warning] isUniqueAttributeForInstance - first argument must be a string.");
@@ -237,14 +219,14 @@ function isUniqueAttributeForInstance(attributeRelation, classInstance, facts, r
 
     if (options.useMetadata) {
         // There is only one value of this attribute for the given class instance.
-        return !(compfinds('Y',read(attributeRelation+'('+classInstance+',Y)'), facts, rules).length > 1);
+        return !(epilog.compfinds('Y',epilog.read(attributeRelation+'('+classInstance+',Y)'), facts, rules).length > 1);
     }
 
     return false;
 }
 
 // Determines whether is at most one attribute value of the same type as the second argument of attributeRelation for the given class instance.
-function isOnlyAttributeOfTypeForInstance(attributeRelation, classInstance, facts, rules, metadata, options) {
+export function isOnlyAttributeOfTypeForInstance(attributeRelation, classInstance, facts, rules, metadata, options) {
     /*     Begin input validation    */
     if (typeof(attributeRelation) !== "string") {
         console.log("[Warning] isOnlyAttributeOfTypeForInstance - first argument must be a string.");
@@ -269,7 +251,7 @@ function isOnlyAttributeOfTypeForInstance(attributeRelation, classInstance, fact
     }
 
     // Verify there is at least one value of attributeRelation for the given class instance.
-    if (!compfindp(read(attributeRelation+'('+classInstance+',Y)'), facts, rules)) {
+    if (!epilog.compfindp(epilog.read(attributeRelation+'('+classInstance+',Y)'), facts, rules)) {
         console.log("[Warning] isOnlyAttributeOfTypeForInstance -", classInstance, "does not have attribute value for", attributeRelation,".");
         return false;
     }
@@ -287,10 +269,9 @@ function isOnlyAttributeOfTypeForInstance(attributeRelation, classInstance, fact
                 continue;
             }
 
-            attributeFactsOfInstanceWithRange = attributeFactsOfInstanceWithRange.concat(compfinds(read(currAttributeRelation+'('+classInstance+',Y)'),read(currAttributeRelation+'('+classInstance+',Y)'), facts, rules));
+            attributeFactsOfInstanceWithRange = attributeFactsOfInstanceWithRange.concat(epilog.compfinds(epilog.read(currAttributeRelation+'('+classInstance+',Y)'),epilog.read(currAttributeRelation+'('+classInstance+',Y)'), facts, rules));
         }
 
         return attributeFactsOfInstanceWithRange.length === 1;
     }
-
 }

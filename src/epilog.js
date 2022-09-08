@@ -85,9 +85,6 @@ function makereduction (head,body)
  {return seq('reduction',head,body)}
 
 function makeimplication (head,body)
- {return seq('implication',head,body)}
-
-function makeimplication (head,body)
  {if (head.length===0) {return body};
   if (head[0]==='and')
      {return seq('implication').concat(tail(head)).concat(seq(body))};
@@ -95,9 +92,6 @@ function makeimplication (head,body)
 
 function makeequivalence (head,body)
  {return seq('equivalence',head,body)}
-
-function makedefinition (head,body)
- {return seq('definition',head,body)}
 
 function makerule (head,body)
  {if (body.length===0) {return head};
@@ -2271,17 +2265,6 @@ function compexecute (seed,facts,rules)
        compsave(update,facts)};
   return outputs}
 
-function compexpand (seed,facts,rules)
- {if (symbolp(seed)) {return compexpandrs(seed,facts,rules)};
-  if (seed[0]==='not') {return [seed]};
-  if (seed[0]==='and')
-     {var updates = [];
-      for (var i=1; i<seed.length; i++)
-          {updates = updates.concat(compexpand(seed[i],facts,rules))}
-      return updates};
-  if (seed[0]==='transition') {return compexpandtransition(seed,facts,rules)};
-  return compexpandrs(seed,facts,rules)}
-
 function compexpandtransition (seed,facts,rules)
  {var updates = [];
   var changes = compfinds(seed[2],seed[1],facts,rules);
@@ -2379,9 +2362,6 @@ function compupdates (facts,rules)
   return updates}
 
 //------------------------------------------------------------------------------
-
-function comptransform (condition,action,facts,rules)
- {return compexecute(seq('transition',condition,action),facts,rules)}
 
 function comptransform (condition,action,facts,rules)
  {var updates = [];
@@ -2801,18 +2781,6 @@ function hypoexecute (seed,adds,dels,facts,rules)
        if (update[0]==='not') {continue};
        compsave(update,facts)};
   return true}
-
-function hypoexpand (seed,adds,dels,facts,rules)
- {if (symbolp(seed)) {return [seed]};
-  if (seed[0]==='not') {return [seed]};
-  if (seed[0]==='and')
-     {var updates = [];
-      for (var i=1; i<seed.length; i++)
-          {updates = updates.concat(hypoexpand(seed[i],adds,dels,facts,rules))}
-      return updates};
-  if (seed[0]==='transition')
-     {return hypoexpandtransition(seed,adds,dels,facts,rules)};
-  return hypoexpandrs(seed,adds,dels,facts,rules)}
 
 function hypoexpandtransition (seed,adds,dels,facts,rules)
  {var updates = [];
@@ -3698,8 +3666,7 @@ function map (f,l,facts,rules)
   return seq('cons',result,results)}
 
 function listify (s)
- {console.log("listify");
-   var exp = nil;
+ {var exp = nil;
   for (var i=s.length-1; i>=0; i--)
       {exp = seq('cons',s[i],exp)};
   return exp}
@@ -4783,6 +4750,58 @@ function getrelations (datum,rs)
   if (listop(datum[0])) {return rs};
   if (aggregatep(datum[0])) {return getrelations(datum[2],rs)};
   return adjoin(datum[0],rs)}
+
+//==============================================================================
+// Extra conveniences
+//==============================================================================
+
+/**
+ * @param a An expression
+ * @param b An expression
+ * @returns `true` iff `b` is an instance of `a`
+ */
+function matchp(a, b)
+ {return !!match(a, b, nil)}
+
+/**
+ * @param expr Any expression
+ * @returns `true` iff `expr` is a negative literal
+ */
+function negativep(expr)
+ {if (!expr.length) {return false}
+  return expr[0] === 'not'}
+
+//==============================================================================
+// Exports
+//==============================================================================
+
+export {
+  basep,
+  basefindp,
+  basefinds,
+  basefindx,
+  compfindp,
+  compfinds,
+  compfindx,
+  definefacts,
+  definemorefacts,
+  definerules,
+  definemorerules,
+  equalp,
+  grind,
+  lookupfacts,
+  lookuprules,
+  maksand,
+  matchp,
+  negativep,
+  read,
+  readdata,
+  seq,
+  stripquotes,
+  symbolp,
+  varp,
+  vars
+};
 
 //==============================================================================
 // End

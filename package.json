@@ -1,0 +1,19 @@
+{
+    "name": "@epilog/english-explanation",
+    "description": "English explanations for Epilog queries.",
+    "version": "0.1.0",
+    "exports": {
+        "./*": {
+            "import": "./src/*.js",
+            "require": "./dist/cjs/*.js"
+        }
+    },
+    "scripts": {
+        "package": "tsc --project .",
+        "prepublishOnly": "npm run package"
+    },
+    "devDependencies": {
+        "eslint": "^8.23.0",
+        "typescript": "^4.8.2"
+    }
+}
