@@ -1,0 +1,1 @@
+grandparent(X,Z) :- person.parent(X,Y) & person.parent(Y,Z)

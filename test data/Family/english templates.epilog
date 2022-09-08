@@ -1,0 +1,3 @@
+(grandparent(X,Z), "$X$ is a grandparent of $Z$")
+% Procedural templates for unique attributes
+(person.parent, "parent", "of $P$")

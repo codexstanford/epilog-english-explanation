@@ -216,6 +216,7 @@ document.getElementById('button_reload_default').addEventListener('click', funct
     storage.setTemplatesFile(null);
 
     storage.loadEpilogAndTemplates(true).then(() => {
+        ({facts, rules, metadata, english_templates} = storage.getEpilogAndTemplates());
         updateUsingUploadedDataIndicator();
     });
 });
@@ -252,6 +253,7 @@ document.getElementById('button_upload_custom').addEventListener('click', functi
     }
 
     storage.loadEpilogAndTemplates(true).then(() => {
+        ({facts, rules, metadata, english_templates} = storage.getEpilogAndTemplates());
         updateUsingUploadedDataIndicator();
     });
 });

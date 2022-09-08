@@ -565,7 +565,7 @@ function derivTreeToEnglish(derivTree, facts, rules, metadata, english_templates
     }
     
     englishExplanation += childExplanationList.join(" and \n \t");
-    return englishExplanation;
+    return "We know that " + englishExplanation;
 }
 
 //==============================================================================

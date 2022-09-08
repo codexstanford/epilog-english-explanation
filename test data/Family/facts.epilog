@@ -1,0 +1,6 @@
+type(alan_arrogant,person)
+type(sally_squirrel,person)
+type(bill_boring,person)
+
+person.parent(sally_squirrel,alan_arrogant)
+person.parent(bill_boring,sally_squirrel)
