@@ -10,7 +10,7 @@
         }
     },
     "scripts": {
-        "prepare": "tsc --project ."
+        "prepublishOnly": "tsc --project ."
     },
     "devDependencies": {
         "eslint": "^8.23.0",
