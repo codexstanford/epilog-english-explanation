@@ -1,6 +1,6 @@
-import * as english from '/src/englishExplanation.js';
-import * as epilog from '/src/epilog.js';
-import * as storage from '/src/storage.js';
+import * as english from '../src/englishExplanation.js';
+import * as epilog from '../src/epilog.js';
+import * as storage from '../src/storage.js';
 import * as db from '../src/epilogDatabase.js';
 
 const FACTS_FILE_SELECTOR_ID = "local_facts_file";
@@ -228,32 +228,35 @@ document.getElementById('button_upload_custom').addEventListener('click', functi
     let metadataFilesSelected = document.getElementById(METADATA_FILE_SELECTOR_ID).files;
     let templatesFilesSelected = document.getElementById(TEMPLATES_FILE_SELECTOR_ID).files;
 
-    // Currently, we use default data for those files that haven't been selected by the user.
+    // Only overwrite that data which is newly specified.
+    let overwriteExisting_parameterized = {
+        facts: false,
+        rules: false,
+        metadata: false,
+        english_templates: false
+    };
+
     if (factsFilesSelected.length !== 0) {
         storage.setFactsFile(factsFilesSelected[0]);
-    } else {
-        //setFactsFile(new File([""], ""));
+        overwriteExisting_parameterized.facts = true;
     }
 
     if (rulesFilesSelected.length !== 0) {
         storage.setRulesFile(rulesFilesSelected[0]);
-    } else {
-        //setRulesFile(new File([""], ""));
+        overwriteExisting_parameterized.rules = true;
     }
 
     if (metadataFilesSelected.length !== 0) {
         storage.setMetadataFile(metadataFilesSelected[0]);
-    } else {
-        //setMetadataFile(new File([""], ""));
+        overwriteExisting_parameterized.metadata = true;
     }
 
     if (templatesFilesSelected.length !== 0) {
         storage.setTemplatesFile(templatesFilesSelected[0]);
-    } else {
-        //setTemplatesFile(new File([""], ""));
+        overwriteExisting_parameterized.english_templates = true;
     }
 
-    storage.loadEpilogAndTemplates(true).then(() => {
+    storage.loadEpilogAndTemplates(overwriteExisting_parameterized).then(() => {
         ({facts, rules, metadata, english_templates} = storage.getEpilogAndTemplates());
         updateUsingUploadedDataIndicator();
     });

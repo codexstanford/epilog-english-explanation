@@ -64,11 +64,27 @@ var englishTemplatesFile = null;
 
 
 // Loads data into localStorage for global access and persistence between sessions.
-export async function loadEpilogAndTemplates(overwriteExisting) {
-    await loadEpilogFacts(overwriteExisting);
-    await loadEpilogRules(overwriteExisting)
-    await loadEpilogMetadata(overwriteExisting)
-    await loadEnglishTemplates(overwriteExisting);
+export async function loadEpilogAndTemplates(overwriteExisting_parameterized) {
+    if (overwriteExisting_parameterized === false) {
+        overwriteExisting_parameterized = {
+            facts: false,
+            rules: false,
+            metadata: false,
+            english_templates: false,
+        };
+    } else if (overwriteExisting_parameterized === true) {
+        overwriteExisting_parameterized = {
+            facts: true,
+            rules: true,
+            metadata: true,
+            english_templates: true,
+        };
+    }
+
+    await loadEpilogFacts(overwriteExisting_parameterized.facts);
+    await loadEpilogRules(overwriteExisting_parameterized.rules)
+    await loadEpilogMetadata(overwriteExisting_parameterized.metadata)
+    await loadEnglishTemplates(overwriteExisting_parameterized.english_templates);
 }
 
 // Reads string data from localStorage into a usable format:
@@ -168,8 +184,6 @@ async function loadEnglishTemplates(overwriteExisting) {
     
     let englishTemplatesTextData = "";
     let englishTemplatesSelectedFileName = "";
-
-    console.log("test");
 
     if (englishTemplatesFile === null) {
         englishTemplatesTextData = document.getElementById(ENGLISH_TEMPLATES_KEY).textContent;
