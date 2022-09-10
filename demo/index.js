@@ -1,6 +1,7 @@
 import * as english from '/src/englishExplanation.js';
 import * as epilog from '/src/epilog.js';
 import * as storage from '/src/storage.js';
+import * as db from '../src/epilogDatabase.js';
 
 const FACTS_FILE_SELECTOR_ID = "local_facts_file";
 const RULES_FILE_SELECTOR_ID = "local_rules_file";
@@ -85,16 +86,12 @@ function getOptionFromParams(optionName, urlParameters, defaultVal) {
 }
 
 function setOptionCheckboxes(options) {
-    console.log("setting removeclassattributes",options.removeClassAttributes);
-
     document.getElementById("replaceWithType").checked = options.replaceWithType;
     document.getElementById("removeClassAttributes").checked = options.removeClassAttributes;
     document.getElementById("bindLocalConstants").checked = options.bindLocalConstants;
     document.getElementById("verifyDerivable").checked = options.verifyDerivable;
     document.getElementById("linkFromExplanation").checked = options.linkFromExplanation;
     document.getElementById("linkGivenFacts").checked = options.linkGivenFacts;
-
-    console.log("getting removeclassattributes",document.getElementById("removeClassAttributes").checked);
 }
 
 // Use whenever calling loadEpilogAndTemplates; defined and used here for MVC decomposition.
@@ -137,7 +134,7 @@ document.getElementById('button_explanation').addEventListener('click', function
     location = newLocation;
 });
 
-// Fill the conclusion input textarea with a random fact that matches a template.
+// Fill the conclusion input textarea with a random (view predicate) fact that matches a template.
 // Not a uniformly random fact; a template is chosen uniformly at random, then a fact is chosen uniformly at random from those that matched the template.
 document.getElementById('button_randomExample').addEventListener('click', function () {
     let input_textarea = document.getElementById('input_conclusion');
@@ -149,6 +146,10 @@ document.getElementById('button_randomExample').addEventListener('click', functi
     }
 
     let english_templates_copy = [...english_templates];
+
+    // Only include templates with view predicates - don't want the examples to be given facts.
+    english_templates_copy = english_templates_copy.filter(eng_template => db.isViewPredicate(eng_template.getQueryAsList()[0],rules));
+
     let randomFact = null;
 
     // Randomly pick templates until one can be found with matching facts.
@@ -161,7 +162,7 @@ document.getElementById('button_randomExample').addEventListener('click', functi
         let randomMatchedFacts = epilog.compfinds(queryGoal, queryGoal, facts, rules);
 
         // Found matching facts for the template
-        if (randomMatchedFacts.length > 0) {
+        if ( randomMatchedFacts.length > 0) {
             randomFact = randomMatchedFacts[Math.floor(Math.random()*randomMatchedFacts.length)];
             break;
         }

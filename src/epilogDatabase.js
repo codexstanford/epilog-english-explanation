@@ -41,6 +41,15 @@ export function getSymbolType(symbol, facts, rules, typePredicate) {
     return type;
 }
 
+// Returns whether relation is a view predicate (defined in the head of some rule in rules)
+export function isViewPredicate(relation, rules) {
+    if (rules[relation] === undefined) {
+        return false;
+    }
+
+    return rules[relation].length > 0;
+}
+
 // Determines whether relation is an attribute relation of className
 export function isAttributeOfClass(relation, className, facts, rules, metadata, options) {
     if (relation === false) {

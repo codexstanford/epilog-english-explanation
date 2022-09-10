@@ -30,7 +30,7 @@
         (evaluate(stringmin(X,Y),Z),"the minimum of $X$ and $Y$ is $Z$")
         (evaluate(minus(X,Y),Z),"$X$ minus $Y$ is $Z$")
         (countofall(E,exclusion(C,E),0),"there is no exclusion for $C$")
-        (longer_hospital_stay(C1,C2), "The hospital stay in $C1$ is longer than that in $C2$")
+        (longer_hospital_stay(C1,C2), "the hospital stay in $C1$ is longer than that in $C2$")
         % Procedural templates for unique attributes
         (claim.hospitalization, "hospitalization", "listed in $C$")
         (country.continent, "continent", "on which $C$ resides")
