@@ -352,7 +352,7 @@ class FactWrapper {
  * 
  *      typePredicate: the predicate used in the database of facts to indicate the type of a constant. e.g. type(claim21, claim)
  *      replaceWithType: whether to replace constants in explanations with their type. e.g. "the hospitalization of claim21 is hospitalization21" becomes "the hospitalization of the claim is the hospitalization"
- *      removeClassAttributes: whether to remove class attribute facts from explanations. e.g. claim.hospitalization(claim21, hospitalization21)
+ *      removeClassAttributes: whether to remove attribute relation facts from explanations. e.g. claim.hospitalization(claim21, hospitalization21)
  *      bindLocalConstants: whether to bind class attributes to class they were introduced as belonging to. No effect if replaceWithType is false. e.g. "the hospitalization of claim21 is hospitalization21" becomes "the hospitalization of the claim is the hospitalization of the claim"
  *      verifyDerivable: whether to verify that the fact to be explained is derivable from the given facts and rules. Without this, all facts are assumed derivable/true.
  *      useMetadata [not implemented]: whether to use metadata in determining properties of predicates in the database. e.g. whether claim.hospitalization is an attributerelation, or whether claim is a class
@@ -840,7 +840,7 @@ function constructTypeToOrderedSymbolsMap(derivTree, facts, rules, options) {
  * The object mapping variable to constants allows us to remember which constants the variables
  * originally matched to, regardless of the transformations performed on the 2D array.
  */
-function getMatchingTemplate(groundAtom, english_templates) {
+export function getMatchingTemplate(groundAtom, english_templates) {
     //Convert to list format
     if (typeof(groundAtom) === "string") {
         groundAtom = epilog.read(groundAtom);

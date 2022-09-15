@@ -11,6 +11,7 @@ import * as epilog from './epilog.js';
 //==============================================================================
 //------------------------------------------------------------------------------
 // loadEpilogAndTemplates (async)
+// unloadEpilogAndTemplates
 // getEpilogAndTemplates
 //
 // setFactsFile
@@ -69,7 +70,7 @@ var englishTemplatesFile = null;
 export async function loadEpilogAndTemplates(overwriteExisting) {
     let overwriteExisting_parameterized = null;
 
-    // If input param is a boolean, set the value of all keys to that value.
+    // If input param is a boolean, set the value of each key to that value.
     if (typeof overwriteExisting === "boolean") {
         overwriteExisting_parameterized = {
             facts: overwriteExisting,
@@ -87,8 +88,21 @@ export async function loadEpilogAndTemplates(overwriteExisting) {
     await loadEnglishTemplates(overwriteExisting_parameterized.english_templates);
 }
 
+// Deletes data from localstorage.
+export function unloadEpilogAndTemplates() {
+    localStorage.removeItem(EPILOG_FACTS_KEY);
+    localStorage.removeItem(EPILOG_RULES_KEY);
+    localStorage.removeItem(EPILOG_METADATA_KEY);
+    localStorage.removeItem(ENGLISH_TEMPLATES_KEY);
+
+    localStorage.removeItem(EPILOG_FACTS_KEY + UPLOADED_FILENAME_KEY_SUFFIX);
+    localStorage.removeItem(EPILOG_RULES_KEY + UPLOADED_FILENAME_KEY_SUFFIX);
+    localStorage.removeItem(EPILOG_METADATA_KEY + UPLOADED_FILENAME_KEY_SUFFIX);
+    localStorage.removeItem(ENGLISH_TEMPLATES_KEY + UPLOADED_FILENAME_KEY_SUFFIX);
+}
+
 // Reads string data from localStorage into a usable format:
-// Epilog facts and rules, and an array of templates. The template format is described above getTemplates())
+// Epilog facts, rules, and metadata, and an array of templates. The template format is described above getTemplates())
 export function getEpilogAndTemplates() {
     return {
         facts: getEpilogFacts(),

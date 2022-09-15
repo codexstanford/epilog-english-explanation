@@ -679,6 +679,11 @@ function indexsymbol (x,p,theory)
  {if (x==='map') {return p};
   if (!isNaN(Number(x))) {return p};
   var data = theory[x];
+  // Protection against enhance.js in Obsidian - Preston Carlson
+  // A 'unique' function is added to Array.prototype, which makes the undefined check fail incorrectly when x === 'unique'.
+  if (typeof(data) === "function") {
+    data = undefined;
+  }
   if (data===undefined) {theory[x] = [p]; return p};
   if (data[data.length-1]===p) {return p};
   data.push(p);
