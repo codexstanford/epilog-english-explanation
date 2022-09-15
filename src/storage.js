@@ -63,22 +63,22 @@ var englishTemplatesFile = null;
 // If using default data, the corresponding localStorage[SOME_KEY_CONST + "_selected_filename"] is set to "null".
 
 
-// Loads data into localStorage for global access and persistence between sessions.
-export async function loadEpilogAndTemplates(overwriteExisting_parameterized) {
-    if (overwriteExisting_parameterized === false) {
+/* Loads data into localStorage for global access and persistence between sessions.
+* @param overwriteExisting: a boolean or an Object with keys {facts, rules, metadata, english_templates}
+*/ 
+export async function loadEpilogAndTemplates(overwriteExisting) {
+    let overwriteExisting_parameterized = null;
+
+    // If input param is a boolean, set the value of all keys to that value.
+    if (typeof overwriteExisting === "boolean") {
         overwriteExisting_parameterized = {
-            facts: false,
-            rules: false,
-            metadata: false,
-            english_templates: false,
+            facts: overwriteExisting,
+            rules: overwriteExisting,
+            metadata: overwriteExisting,
+            english_templates: overwriteExisting,
         };
-    } else if (overwriteExisting_parameterized === true) {
-        overwriteExisting_parameterized = {
-            facts: true,
-            rules: true,
-            metadata: true,
-            english_templates: true,
-        };
+    } else {
+        overwriteExisting_parameterized = overwriteExisting
     }
 
     await loadEpilogFacts(overwriteExisting_parameterized.facts);
